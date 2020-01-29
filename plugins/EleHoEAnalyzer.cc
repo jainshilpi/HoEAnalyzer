@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    HoE/HoEAnalyzer
-// Class:      HoEAnalyzer
+// Package:    HoE/EleHoEAnalyzer
+// Class:      EleHoEAnalyzer
 //
-/**\class HoEAnalyzer HoEAnalyzer.cc HoE/HoEAnalyzer/plugins/HoEAnalyzer.cc
+/**\class EleHoEAnalyzer EleHoEAnalyzer.cc HoE/EleHoEAnalyzer/plugins/EleHoEAnalyzer.cc
 
  Description: [one line class summary]
 
@@ -72,10 +72,10 @@
 // This will improve performance in multithreaded jobs.
 
 
-class HoEAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
+class EleHoEAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 public:
-  explicit HoEAnalyzer(const edm::ParameterSet&);
-  ~HoEAnalyzer();
+  explicit EleHoEAnalyzer(const edm::ParameterSet&);
+  ~EleHoEAnalyzer();
   
   static edm::ParameterSetDescription makePSetDescription();
   
@@ -138,7 +138,9 @@ public:
   std::vector<float>  perEle_hcalRechitEta;
   std::vector<float>  perEle_hcalRechitPhi;
 
-  std::vector<float>  puTrue;
+  float  puTrue;
+  int puObs;
+  float rho;
 
   
 private:
@@ -155,6 +157,7 @@ private:
   // ----------member data ---------------------------
   edm::EDGetTokenT<edm::View<reco::GsfElectron> > eleToken_;
   edm::EDGetTokenT<std::vector<PileupSummaryInfo> >     puCollection_;
+  edm::EDGetTokenT<double> rhoToken_;
   edm::EDGetTokenT<HBHERecHitCollection> hbhe_rechits_;
   edm::EDGetTokenT<EcalRecHitCollection> ebReducedRecHitCollection_;
   edm::EDGetTokenT<EcalRecHitCollection> eeReducedRecHitCollection_;
@@ -177,17 +180,17 @@ private:
 //
 // constructors and destructor
 //
-HoEAnalyzer::HoEAnalyzer(const edm::ParameterSet& iConfig)
+EleHoEAnalyzer::EleHoEAnalyzer(const edm::ParameterSet& iConfig)
   :
   eleToken_(consumes<edm::View<reco::GsfElectron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
   puCollection_(consumes<std::vector<PileupSummaryInfo> >(iConfig.getParameter<edm::InputTag>("pileupCollection"))),
+  rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
   hbhe_rechits_(consumes<HBHERecHitCollection>(iConfig.getParameter<edm::InputTag>("hbheInput"))),
   ebReducedRecHitCollection_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("ebReducedRecHitCollection"))),
   eeReducedRecHitCollection_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("eeReducedRecHitCollection"))),
   esReducedRecHitCollection_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("esReducedRecHitCollection"))),
   genParticlesCollection_(consumes<std::vector<reco::GenParticle> >(iConfig.getParameter<edm::InputTag>("genParticleSrc"))),
   Run2_2018(iConfig.getParameter<bool>("Run2_2018_"))
-
 {
   //now do what ever initialization is needed
   
@@ -235,11 +238,13 @@ HoEAnalyzer::HoEAnalyzer(const edm::ParameterSet& iConfig)
   tree->Branch("hcalRechitEta_",&hcalRechitEta);
   tree->Branch("hcalRechitPhi_",&hcalRechitPhi);
   tree->Branch("puTrue_", &puTrue);
+  tree->Branch("puObs_", &puObs);
+  tree->Branch("rho_", &rho);
 
 }
 
 
-HoEAnalyzer::~HoEAnalyzer()
+EleHoEAnalyzer::~EleHoEAnalyzer()
 {
   
   // do anything here that needs to be done at desctruction time
@@ -254,9 +259,8 @@ HoEAnalyzer::~HoEAnalyzer()
 
 // ------------ method called for each event  ------------
 void
-HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+EleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-  
   //   std::cout << " \n ****** new event ... " << std::endl; 
   using namespace edm;
   
@@ -307,28 +311,35 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   hcalRechitEta.clear();
   hcalRechitPhi.clear();
 
-  puTrue.clear();
-
-  
   edm::Handle<std::vector<PileupSummaryInfo> > genPileupHandle;
   iEvent.getByToken(puCollection_, genPileupHandle);
   
   if (genPileupHandle.isValid()) {
     for (std::vector<PileupSummaryInfo>::const_iterator pu = genPileupHandle->begin(); pu != genPileupHandle->end(); ++pu) {
-      puTrue.push_back(pu->getTrueNumInteractions());
+      if (pu->getBunchCrossing() == 0) {
+        puTrue = pu->getTrueNumInteractions();
+        puObs = pu->getPU_NumInteractions();
+
+        break;
+      }
     }
   }
-  
+
+  edm::Handle<double> rhoHandle;
+  iEvent.getByToken(rhoToken_, rhoHandle);
+  if (!rhoHandle.failedToGet())
+    rho = *(rhoHandle.product());
+  else
+    rho = 0.f;
+
   edm::Handle<HBHERecHitCollection> hbheRechitsHandle;
   iEvent.getByToken(hbhe_rechits_, hbheRechitsHandle);
   iSetup.get<CaloGeometryRecord>().get(theCaloGeometry);
   iSetup.get<CaloGeometryRecord>().get(towerMap_);
 
-    
   edm::Handle<std::vector<reco::GenParticle> > genParticlesHandle;
   iEvent.getByToken(genParticlesCollection_, genParticlesHandle);
-  
-  
+
   for(const auto& ele : iEvent.get(eleToken_) ) {
     // std::cout << "\n new electron ...\n" ;
     int genmatched=0;
@@ -353,7 +364,6 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 	  }
 	}  
       }
-
     }
   
     if ( (min_dr<0.04) && (ptR>0.7) && (ptR<1.3) )  genmatched=1; // these cuts were decided looking at min_dr and ptR distributions.
@@ -361,8 +371,7 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     ptRecoEle_by_ptGenEle.push_back(ptR);
     //  std::cout << "genmatched = " << genmatched <<  " min_dr " << min_dr << " ptR " << ptR   <<  std::endl;    
     ele_genmatched.push_back(genmatched);
-    
-    
+
     perEle_hcalRechitIeta.clear();
     perEle_hcalRechitIphi.clear();
     perEle_hcalRechitEnergy.clear();
@@ -484,11 +493,8 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 	  }
 	  perEle_hcalRechitEta.push_back(rechitEta);
 	  perEle_hcalRechitPhi.push_back(rechitPhi);
-	  
 	}
-	
       }
-      
     }
   
     ele_trackFbrem.push_back(ele.trackFbrem());
@@ -565,9 +571,6 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     hcalRechitDepth.push_back(perEle_hcalRechitDepth);
     hcalRechitEta.push_back(perEle_hcalRechitEta);
     hcalRechitPhi.push_back(perEle_hcalRechitPhi);
-    
-    
-    
   }
    
   tree->Fill();
@@ -581,7 +584,7 @@ HoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 //doing some blatant copy paste from RecoEgamma/EgammaIsolationAlgos/src/EGHcalRecHitSelector.cc //
 
-int HoEAnalyzer::calDIPhi(int iPhi1, int iPhi2) {
+int EleHoEAnalyzer::calDIPhi(int iPhi1, int iPhi2) {
   int dPhi = iPhi1 - iPhi2;
   if (dPhi > 72 / 2)
     dPhi -= 72;
@@ -592,7 +595,7 @@ int HoEAnalyzer::calDIPhi(int iPhi1, int iPhi2) {
 
 //
 
-int HoEAnalyzer::calDIEta(int iEta1, int iEta2) {
+int EleHoEAnalyzer::calDIEta(int iEta1, int iEta2) {
   int dEta = iEta1 - iEta2;
   if (iEta1 * iEta2 < 0) {  //-ve to +ve transistion and no crystal at zero
     if (dEta < 0)
@@ -609,7 +612,7 @@ int HoEAnalyzer::calDIEta(int iEta1, int iEta2) {
 //In HE, 2018 and Run3 is same, and it is 0.1 in depth1, and 0.2 in other depths.
 //Double check these HCAL thresholds from Sam.
 
-float HoEAnalyzer::getMinEnergyHCAL_(HcalDetId id) const {
+float EleHoEAnalyzer::getMinEnergyHCAL_(HcalDetId id) const {
   if ( (id.subdetId() == HcalBarrel)  ) {
     if ( (Run2_2018 == 1) )
       return 0.7;
@@ -637,26 +640,24 @@ float HoEAnalyzer::getMinEnergyHCAL_(HcalDetId id) const {
 
 // ------------ method called once each job just before starting event loop  ------------
 void
-HoEAnalyzer::beginJob()
+EleHoEAnalyzer::beginJob()
 {
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void
-HoEAnalyzer::endJob()
+EleHoEAnalyzer::endJob()
 {
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void
-HoEAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+EleHoEAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
   desc.setUnknown();
   descriptions.addDefault(desc);
-
-
 }
 
 //define this as a plug-in
