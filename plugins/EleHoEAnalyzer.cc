@@ -106,6 +106,7 @@ public:
   std::vector<float>  elePt;
   std::vector<float>  elePhi;
   std::vector<float>  eleSigmaIEtaIEtaFull5x5;
+  std::vector<float>  elePFPhoIso;
   std::vector<float>  elePFNeuIso;
   std::vector<float>  elePFChIso;
   std::vector<int>    eleSeedDet;
@@ -193,7 +194,6 @@ EleHoEAnalyzer::EleHoEAnalyzer(const edm::ParameterSet& iConfig)
   Run2_2018(iConfig.getParameter<bool>("Run2_2018_"))
 {
   //now do what ever initialization is needed
-  
   tree->Branch("ele_golden_",&ele_golden);
   tree->Branch("ele_unknown_",&ele_unknown);
   tree->Branch("ele_bigbrem_",&ele_bigbrem);
@@ -217,6 +217,7 @@ EleHoEAnalyzer::EleHoEAnalyzer(const edm::ParameterSet& iConfig)
   tree->Branch("elePt_",&elePt);
   tree->Branch("elePhi_",&elePhi);
   tree->Branch("eleSigmaIEtaIEtaFull5x5_",&eleSigmaIEtaIEtaFull5x5);
+  tree->Branch("elePFPhoIso_",&elePFPhoIso);
   tree->Branch("elePFNeuIso_",&elePFNeuIso);
   tree->Branch("elePFChIso_",&elePFChIso);
   tree->Branch("eleSeedDet_",&eleSeedDet);
@@ -240,7 +241,6 @@ EleHoEAnalyzer::EleHoEAnalyzer(const edm::ParameterSet& iConfig)
   tree->Branch("puTrue_", &puTrue);
   tree->Branch("puObs_", &puObs);
   tree->Branch("rho_", &rho);
-
 }
 
 
@@ -289,6 +289,7 @@ EleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   elePt.clear();
   elePhi.clear();
   eleSigmaIEtaIEtaFull5x5.clear();
+  elePFPhoIso.clear();
   elePFNeuIso.clear();
   elePFChIso.clear();
   eleSeedDet.clear();
@@ -381,13 +382,14 @@ EleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     perEle_hcalRechitDepth.clear();
     perEle_hcalRechitEta.clear();
     perEle_hcalRechitPhi.clear();
-        
+
     eleScEta.push_back(ele.superCluster()->eta());
     elePt.push_back(ele.pt());
     elePhi.push_back(ele.phi());
     eleSigmaIEtaIEtaFull5x5.push_back(ele.full5x5_sigmaIetaIeta());
   
     reco::GsfElectron::PflowIsolationVariables pfIso = ele.pfIsolationVariables();
+    elePFPhoIso.push_back(pfIso.sumPhotonEt);
     elePFNeuIso.push_back(pfIso.sumNeutralHadronEt);
     elePFChIso.push_back(pfIso.sumChargedHadronPt);
 
@@ -418,7 +420,6 @@ EleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 	    var_eleSeedPhi=ecalrechitPoint.phi();
 	  }
 	}
-	
       }
     }
   
