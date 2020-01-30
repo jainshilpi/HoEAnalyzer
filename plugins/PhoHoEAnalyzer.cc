@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    HoE/EleHoEAnalyzer
-// Class:      EleHoEAnalyzer
+// Package:    HoE/PhoHoEAnalyzer
+// Class:      PhoHoEAnalyzer
 //
-/**\class EleHoEAnalyzer EleHoEAnalyzer.cc HoE/EleHoEAnalyzer/plugins/EleHoEAnalyzer.cc
+/**\class PhoHoEAnalyzer PhoHoEAnalyzer.cc HoE/PhoHoEAnalyzer/plugins/PhoHoEAnalyzer.cc
 
  Description: [one line class summary]
 
