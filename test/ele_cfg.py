@@ -33,7 +33,7 @@ process.source = cms.Source("PoolSource",
                                 # Run3 file to check hcal depths
                                 #'/store/mc/Run3Summer19MiniAOD/DYToEE_M-50_NNPDF31_TuneCP5_14TeV-powheg-pythia8/MINIAODSIM/2023Scenario_106X_mcRun3_2023_realistic_v3-v2/260000/FE3A7D24-F46E-8744-B92B-F6115FD395A0.root'
                                 # example 2021 file
-                                '/store/mc/Run3Summer19MiniAOD/QCD_Pt_1800to2400_TuneCP5_14TeV_pythia8/MINIAODSIM/2021Scenario_106X_mcRun3_2021_realistic_v3-v2/130000/2C20FC5F-B670-4C46-BCC9-02EDF6EFA5F6.root'
+                                #'/store/mc/Run3Summer19MiniAOD/QCD_Pt_1800to2400_TuneCP5_14TeV_pythia8/MINIAODSIM/2021Scenario_106X_mcRun3_2021_realistic_v3-v2/130000/2C20FC5F-B670-4C46-BCC9-02EDF6EFA5F6.root'
                             )
 )
 
@@ -49,6 +49,6 @@ process.demo = cms.EDAnalyzer('EleHoEAnalyzer',
                               Run2_2018_ = cms.bool(False),
                               rhoSrc = cms.InputTag("fixedGridRhoFastjetAll"),
 )
-process.TFileService = cms.Service("TFileService", fileName = cms.string('test.root'))
+process.TFileService = cms.Service("TFileService", fileName = cms.string('electron.root'))
 
 process.p = cms.Path(process.demo)
