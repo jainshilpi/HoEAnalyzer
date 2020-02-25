@@ -132,9 +132,9 @@ private:
   virtual void endJob() override;
   static int calDIEta(int iEta1, int iEta2);
   static int calDIPhi(int iPhi1, int iPhi2);
-  void reallocate_setaddress(int n_ele = 0, int n_hcalhit = 0);
+  void reallocate_setaddress(int n_ele_ = 0, int n_hcalhit_ = 0);
   float getMinEnergyHCAL(HcalDetId id) const;
-  
+
   int maxDIEta_ = 5;
   int maxDIPhi_ = 5;
 
@@ -165,8 +165,7 @@ private:
 //
 // constructors and destructor
 //
-FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig)
-  :
+FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig) :
   eleToken_(consumes<edm::View<reco::GsfElectron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
   puCollection_(consumes<std::vector<PileupSummaryInfo> >(iConfig.getParameter<edm::InputTag>("pileupCollection"))),
   rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
@@ -285,6 +284,9 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::Handle<std::vector<reco::GenParticle> > genParticlesHandle;
   iEvent.getByToken(genParticlesCollection_, genParticlesHandle);
 
+  if (iEvent.get(eleToken_).size() > ele_golden.capacity())
+    reallocate_setaddress(iEvent.get(eleToken_).size(), 0);
+
   for (const auto& ele : iEvent.get(eleToken_)) {
     int genmatch = 0;
     double min_dr = 9999.9;
@@ -333,8 +335,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_seed_detid.emplace_back(seedId.det());
     ele_seed_subdetid.emplace_back(seedId.subdetId());
 
-    float var_ele_seed_eta = -99.f;
-    float var_ele_seed_phi = -99.f;
+    float var_ele_seed_eta = -999.f;
+    float var_ele_seed_phi = -999.f;
 
     DetId seed = (seedCluster.hitsAndFractions())[0].first;
     bool isBarrel = seed.subdetId() == EcalBarrel;
@@ -476,8 +478,14 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert(((void) "ERROR: ele_seed_hcal_ieta size doesn't match n_ele!!!", int(ele_seed_hcal_ieta.size()) == n_ele));
   assert(((void) "ERROR: ele_seed_hcal_iphi size doesn't match n_ele!!!", int(ele_seed_hcal_iphi.size()) == n_ele));
 
-  for (auto& hcalrh : iEvent.get(hbhe_rechits_) ) {
+
+  if (iEvent.get(hbhe_rechits_).size() > hcalhit_depth.capacity())
+      reallocate_setaddress(0, iEvent.get(hbhe_rechits_).size());
+
+  for (auto& hcalrh : iEvent.get(hbhe_rechits_)) {
     if (hcalrh.energy() < getMinEnergyHCAL(hcalrh.id()))
+      continue;
+    if (hcalrh.id().depth() < 0 or hcalrh.id().depth() > 100)
       continue;
 
     hcalhit_ieta.emplace_back(hcalrh.id().ieta());
@@ -493,7 +501,7 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       if (theCaloGeometry.product() != nullptr) {
         const CaloSubdetectorGeometry *geo = theCaloGeometry->getSubdetectorGeometry(hcalrh.id());
 
-        if(geo->getGeometry(hcalrh.id()) != nullptr) {
+        if (geo->getGeometry(hcalrh.id()) != nullptr) {
           const GlobalPoint & rechitPoint = theCaloGeometry.product()->getPosition(hcalrh.id());
 
           rechitEta=rechitPoint.eta();
@@ -507,23 +515,20 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     imin_dieta = -1;
     min_dieta = 999;
 
-    for (int iE = 0; iE < n_ele; ++iE) {
-      int dieta = calDIEta(ele_seed_hcal_ieta[iE], hcalhit_ieta.back());
-
-      if (std::abs(dieta) < min_dieta) {
-        min_dieta = std::abs(dieta);
-        imin_dieta = iE;
-      }
-    }
-
     imin_diphi = -1;
     min_diphi = 999;
 
     for (int iE = 0; iE < n_ele; ++iE) {
-      int diphi = calDIEta(ele_seed_hcal_iphi[iE], hcalhit_iphi.back());
+      int dieta = calDIEta(ele_seed_hcal_ieta[iE], hcalhit_ieta.back());
 
-      if (std::abs(diphi) < min_diphi) {
-        min_diphi = std::abs(diphi);
+      if (std::abs(dieta) < std::abs(min_dieta)) {
+        min_dieta = dieta;
+        imin_dieta = iE;
+      }
+
+      int diphi = calDIPhi(ele_seed_hcal_iphi[iE], hcalhit_iphi.back());
+      if (std::abs(diphi) < std::abs(min_diphi)) {
+        min_diphi = diphi;
         imin_diphi = iE;
       }
     }
@@ -553,11 +558,6 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert(((void) "ERROR: hcalhit_ele_index size doesn't match n_hcalhit!!!", int(hcalhit_ele_index.size()) == n_hcalhit));
   assert(((void) "ERROR: hcalhit_eta size doesn't match n_hcalhit!!!", int(hcalhit_eta.size()) == n_hcalhit));
   assert(((void) "ERROR: hcalhit_phi size doesn't match n_hcalhit!!!", int(hcalhit_phi.size()) == n_hcalhit));
-
-  if (n_ele > int(ele_golden.capacity()))
-    reallocate_setaddress(n_ele, 0);
-  if (n_hcalhit > int(hcalhit_depth.capacity()))
-    reallocate_setaddress(0, n_hcalhit);
 
   tree->Fill();
 
@@ -597,32 +597,31 @@ int FlatEleHoEAnalyzer::calDIEta(int iEta1, int iEta2) {
 float FlatEleHoEAnalyzer::getMinEnergyHCAL(HcalDetId id) const {
   if ( (id.subdetId() == HcalBarrel)  ) {
     if ( (Run2_2018 == 1) )
-      return 0.7;
+      return 0.7f;
     else if ( (Run2_2018 == 0) ) { // means Run3
       if (id.depth() == 1)
-	return 0.1;
+	return 0.1f;
       else if (id.depth() == 2)
-	return 0.2;
+	return 0.2f;
       else
-	return 0.3;
+	return 0.3f;
     }
     else // neither 2018, nor Run3, not supported
-      return 9999.0;
+      return 9999.f;
   } 
-
   else if (id.subdetId() == HcalEndcap) {
     if (id.depth() == 1)
-      return 0.1;
+      return 0.1f;
     else
-      return 0.2;
+      return 0.2f;
   } else
-    return 9999.0;
+    return 9999.f;
 }
 
-void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele, int n_hcalhit)
+void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
 {
   static int cap_ele = 8;
-  cap_ele = (n_ele == 0) ? cap_ele : n_ele;
+  cap_ele = (n_ele_ == 0) ? cap_ele : n_ele_;
   ele_golden.reserve(cap_ele);
   ele_unknown.reserve(cap_ele);
   ele_badtrack.reserve(cap_ele);
@@ -662,7 +661,7 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele, int n_hcalhit)
   ele_seed_hcal_iphi.reserve(cap_ele);
 
   static int cap_hcalhit = 128;
-  cap_hcalhit = (n_hcalhit == 0) ? cap_hcalhit : n_hcalhit;
+  cap_hcalhit = (n_hcalhit_ == 0) ? cap_hcalhit : n_hcalhit_;
   hcalhit_ieta.reserve(cap_hcalhit);
   hcalhit_iphi.reserve(cap_hcalhit);
   hcalhit_energy.reserve(cap_hcalhit);
@@ -674,7 +673,7 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele, int n_hcalhit)
   hcalhit_eta.reserve(cap_hcalhit);
   hcalhit_phi.reserve(cap_hcalhit);
 
-  if (n_ele == 0 and n_hcalhit == 0) {
+  if (n_ele_ == 0 and n_hcalhit_ == 0) {
     tree->Branch("n_ele", &n_ele, "n_ele/I");
     tree->Branch("n_hcalhit", &n_hcalhit, "n_hcalhit/I");
     tree->Branch("pu_true", &pu_true, "pu_true/F");
@@ -729,8 +728,8 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele, int n_hcalhit)
   static TBranch *b_hcalhit_eta = tree->Branch("hcalhit_eta", hcalhit_eta.data(), "hcalhit_eta[n_hcalhit]/F");
   static TBranch *b_hcalhit_phi = tree->Branch("hcalhit_phi", hcalhit_phi.data(), "hcalhit_phi[n_hcalhit]/F");
 
-  if (n_ele != 0) {
-    std::cout << "Electron block realloc..." << std::endl;
+  if (n_ele_ != 0) {
+    std::cout << "Electron block realloc to " << ele_golden.capacity() << "..." << std::endl;
 
     b_ele_golden->SetAddress(ele_golden.data());
     b_ele_unknown->SetAddress(ele_unknown.data());
@@ -769,8 +768,8 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele, int n_hcalhit)
     b_ele_seed_hcal_iphi->SetAddress(ele_seed_hcal_iphi.data());
   }
 
-  if (n_hcalhit != 0) {
-    std::cout << "Hcalhit block realloc..." << std::endl;
+  if (n_hcalhit_ != 0) {
+    std::cout << "Hcalhit block realloc to " << hcalhit_depth.capacity() << "..." << std::endl;
 
     b_hcalhit_ieta->SetAddress(hcalhit_ieta.data());
     b_hcalhit_iphi->SetAddress(hcalhit_iphi.data());
