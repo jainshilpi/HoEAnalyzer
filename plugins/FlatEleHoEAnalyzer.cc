@@ -119,8 +119,8 @@ public:
   std::vector<float>  hcalhit_eta;
   std::vector<float>  hcalhit_phi;
 
-  int imin_dieta, min_dieta;
-  int imin_diphi, min_diphi;
+  int imin, min_dieta, min_diphi;
+  float min_diR2;
 
   float pu_true;
   int pu_obs;
@@ -251,9 +251,9 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   hcalhit_eta.clear();
   hcalhit_phi.clear();
 
-  pu_true = -999.f;
-  pu_obs = -999;
-  rho = -999.f;
+  pu_true = -999999.f;
+  pu_obs = -999999;
+  rho = -999999.f;
 
   edm::Handle<std::vector<PileupSummaryInfo> > genPileupHandle;
   iEvent.getByToken(puCollection_, genPileupHandle);
@@ -274,7 +274,7 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   if (!rhoHandle.failedToGet())
     rho = *(rhoHandle.product());
   else
-    rho = -999.f;
+    rho = -999999.f;
 
   edm::Handle<HBHERecHitCollection> hbheRechitsHandle;
   iEvent.getByToken(hbhe_rechits_, hbheRechitsHandle);
@@ -289,8 +289,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   for (const auto& ele : iEvent.get(eleToken_)) {
     int genmatch = 0;
-    double min_dr = 9999.9;
-    double ptR = 9999.9;
+    double min_dr = 999999.9;
+    double ptR = 999999.9;
      
     if (genParticlesHandle.isValid()) {
       for (std::vector<reco::GenParticle>::const_iterator ip = genParticlesHandle->begin(); ip != genParticlesHandle->end(); ++ip) {
@@ -335,8 +335,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_seed_detid.emplace_back(seedId.det());
     ele_seed_subdetid.emplace_back(seedId.subdetId());
 
-    float var_ele_seed_eta = -999.f;
-    float var_ele_seed_phi = -999.f;
+    float var_ele_seed_eta = -999999.f;
+    float var_ele_seed_phi = -999999.f;
 
     DetId seed = (seedCluster.hitsAndFractions())[0].first;
     bool isBarrel = seed.subdetId() == EcalBarrel;
@@ -358,12 +358,12 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_seed_eta.emplace_back(var_ele_seed_eta);
     ele_seed_phi.emplace_back(var_ele_seed_phi);
 
-    int var_ele_seed_ieta = -999;
-    int var_ele_seed_iphi = -999;
-    int var_ele_seed_raw_id = -999;
+    int var_ele_seed_ieta = -999999;
+    int var_ele_seed_iphi = -999999;
+    int var_ele_seed_raw_id = -999999;
     
-    int var_ele_seed_hcal_ieta = -999;
-    int var_ele_seed_hcal_iphi = -999;
+    int var_ele_seed_hcal_ieta = -999999;
+    int var_ele_seed_hcal_iphi = -999999;
     
     if ( seedId.det() == DetId::Ecal ) {
       if (seedId.subdetId() == EcalBarrel) {
@@ -439,6 +439,10 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ++n_ele;
   }
 
+  // given the context, should be ok...
+  if (n_ele == 0)
+    return;
+
   // just in case
   assert(((void) "ERROR: ele_golden size doesn't match n_ele!!!", int(ele_golden.size()) == n_ele));
   assert(((void) "ERROR: ele_unknown size doesn't match n_ele!!!", int(ele_unknown.size()) == n_ele));
@@ -478,7 +482,6 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert(((void) "ERROR: ele_seed_hcal_ieta size doesn't match n_ele!!!", int(ele_seed_hcal_ieta.size()) == n_ele));
   assert(((void) "ERROR: ele_seed_hcal_iphi size doesn't match n_ele!!!", int(ele_seed_hcal_iphi.size()) == n_ele));
 
-
   if (iEvent.get(hbhe_rechits_).size() > hcalhit_depth.capacity())
       reallocate_setaddress(0, iEvent.get(hbhe_rechits_).size());
 
@@ -495,8 +498,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     hcalhit_raw_id.emplace_back(hcalrh.id().rawId());
     hcalhit_depth.emplace_back(hcalrh.id().depth());
 
-    float rechitEta = -99.f;
-    float rechitPhi = -99.f;
+    float rechitEta = -999999.f;
+    float rechitPhi = -999999.f;
     if (hcalrh.id().rawId() != 0) {
       if (theCaloGeometry.product() != nullptr) {
         const CaloSubdetectorGeometry *geo = theCaloGeometry->getSubdetectorGeometry(hcalrh.id());
@@ -512,37 +515,26 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     hcalhit_eta.emplace_back(rechitEta);
     hcalhit_phi.emplace_back(rechitPhi);
 
-    imin_dieta = -1;
-    min_dieta = 999;
-
-    imin_diphi = -1;
-    min_diphi = 999;
+    imin = -1;
+    min_dieta = 999999;
+    min_diphi = 999999;
+    min_diR2 = 999999.f;
 
     for (int iE = 0; iE < n_ele; ++iE) {
       int dieta = calDIEta(ele_seed_hcal_ieta[iE], hcalhit_ieta.back());
-
-      if (std::abs(dieta) < std::abs(min_dieta)) {
-        min_dieta = dieta;
-        imin_dieta = iE;
-      }
-
       int diphi = calDIPhi(ele_seed_hcal_iphi[iE], hcalhit_iphi.back());
-      if (std::abs(diphi) < std::abs(min_diphi)) {
+
+      if (float(dieta * dieta) + float(diphi * diphi) < min_diR2) {
+        min_diR2 = float(dieta * dieta) + float(diphi * diphi);
+        min_dieta = dieta;
         min_diphi = diphi;
-        imin_diphi = iE;
+        imin = iE;
       }
     }
 
-    if (imin_dieta == imin_diphi) {
-      hcalhit_seed_dieta.emplace_back(min_dieta);
-      hcalhit_seed_diphi.emplace_back(min_diphi);
-      hcalhit_ele_index.emplace_back(imin_dieta);
-    }
-    else {
-      hcalhit_seed_dieta.emplace_back(999);
-      hcalhit_seed_diphi.emplace_back(999);
-      hcalhit_ele_index.emplace_back(-1);
-    }
+    hcalhit_seed_dieta.emplace_back(min_dieta);
+    hcalhit_seed_diphi.emplace_back(min_diphi);
+    hcalhit_ele_index.emplace_back(imin);
 
     ++n_hcalhit;
   }
@@ -607,7 +599,7 @@ float FlatEleHoEAnalyzer::getMinEnergyHCAL(HcalDetId id) const {
 	return 0.3f;
     }
     else // neither 2018, nor Run3, not supported
-      return 9999.f;
+      return 999999.f;
   } 
   else if (id.subdetId() == HcalEndcap) {
     if (id.depth() == 1)
@@ -615,7 +607,7 @@ float FlatEleHoEAnalyzer::getMinEnergyHCAL(HcalDetId id) const {
     else
       return 0.2f;
   } else
-    return 9999.f;
+    return 999999.f;
 }
 
 void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
