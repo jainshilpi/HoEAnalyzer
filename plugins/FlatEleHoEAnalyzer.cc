@@ -88,13 +88,18 @@ public:
   std::vector<int>    ele_showering;
   std::vector<int>    ele_gap;
 
+  std::vector<int>    ele_genele;
+  std::vector<float>  ele_dR_reco_genele;
+  std::vector<float>  ele_rpt_reco_genele;
+
+  std::vector<int>    ele_genpho;
+  std::vector<float>  ele_dR_reco_genpho;
+  std::vector<float>  ele_rpt_reco_genpho;
+
   std::vector<float>  ele_track_fbrem;
   std::vector<float>  ele_sc_fbrem;
   std::vector<int>    ele_nbrem;
-  std::vector<int>    ele_genmatch;
   std::vector<float>  ele_sc_energy;
-  std::vector<float>  ele_dR_reco_gen;
-  std::vector<float>  ele_pt_ratio_reco_gen;
   std::vector<float>  ele_sc_raw_energy;
   std::vector<float>  ele_ecal_energy;
   std::vector<float>  ele_seed_energy;
@@ -151,6 +156,7 @@ public:
   float pu_true;
   int pu_obs;
   float rho;
+  float gen_weight;
 
 private:
   virtual void beginJob() override;
@@ -166,15 +172,16 @@ private:
 
   // ----------member data ---------------------------
   edm::EDGetTokenT<edm::View<reco::GsfElectron> > eleToken_;
-  edm::EDGetTokenT<std::vector<PileupSummaryInfo> >     puCollection_;
+  edm::EDGetTokenT<std::vector<PileupSummaryInfo> > puCollection_;
   edm::EDGetTokenT<double> rhoToken_;
+  edm::EDGetTokenT<GenEventInfoProduct> genEventToken_;
   edm::EDGetTokenT<HBHERecHitCollection> hbhe_rechits_;
   edm::EDGetTokenT<EcalRecHitCollection> ebReducedRecHitCollection_;
   edm::EDGetTokenT<EcalRecHitCollection> eeReducedRecHitCollection_;
   edm::EDGetTokenT<EcalRecHitCollection> esReducedRecHitCollection_;
   edm::ESHandle<CaloGeometry> theCaloGeometry;  
   edm::ESHandle<CaloTowerConstituentsMap> towerMap_;
-  edm::EDGetTokenT<std::vector<reco::GenParticle> >     genParticlesCollection_;
+  edm::EDGetTokenT<std::vector<reco::GenParticle> > genParticlesCollection_;
 
   std::string output;
   bool Run2_2018 ; // Now two options are supported, Run2_2018 and Run3
@@ -195,6 +202,7 @@ FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig) :
   eleToken_(consumes<edm::View<reco::GsfElectron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
   puCollection_(consumes<std::vector<PileupSummaryInfo> >(iConfig.getParameter<edm::InputTag>("pileupCollection"))),
   rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
+  genEventToken_(consumes<GenEventInfoProduct>(iConfig.getParameter<edm::InputTag>("genEventSrc"))),
   hbhe_rechits_(consumes<HBHERecHitCollection>(iConfig.getParameter<edm::InputTag>("hbheInput"))),
   ebReducedRecHitCollection_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("ebReducedRecHitCollection"))),
   eeReducedRecHitCollection_(consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("eeReducedRecHitCollection"))),
@@ -242,13 +250,18 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   ele_showering.clear();
   ele_gap.clear();
 
+  ele_genele.clear();
+  ele_rpt_reco_genele.clear();
+  ele_dR_reco_genele.clear();
+
+  ele_genpho.clear();
+  ele_rpt_reco_genpho.clear();
+  ele_dR_reco_genpho.clear();
+
   ele_track_fbrem.clear();
   ele_sc_fbrem.clear();
   ele_nbrem.clear();
 
-  ele_genmatch.clear();
-  ele_pt_ratio_reco_gen.clear();
-  ele_dR_reco_gen.clear();
   ele_sc_energy.clear();
   ele_sc_raw_energy.clear();
   ele_ecal_energy.clear();
@@ -303,6 +316,7 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   pu_true = -999999.f;
   pu_obs = -999999;
   rho = -999999.f;
+  gen_weight = 0.f;
 
   run = iEvent.eventAuxiliary().run();
   lumi_block = iEvent.eventAuxiliary().luminosityBlock();
@@ -332,6 +346,13 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   else
     rho = -999999.f;
 
+  edm::Handle<GenEventInfoProduct> genEventHandle;
+  iEvent.getByToken(genEventToken_, genEventHandle);
+  if (!genEventHandle.failedToGet())
+    gen_weight = genEventHandle->weight();
+  else
+    gen_weight = 0.f;
+
   edm::Handle<HBHERecHitCollection> hbheRechitsHandle;
   iEvent.getByToken(hbhe_rechits_, hbheRechitsHandle);
   iSetup.get<CaloGeometryRecord>().get(theCaloGeometry);
@@ -344,35 +365,56 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     reallocate_setaddress(iEvent.get(eleToken_).size(), 0);
 
   for (const auto& ele : iEvent.get(eleToken_)) {
-    int genmatch = 0;
-    double min_dr2 = 999999.;
-    double ptR = 999999.;
-     
+    int genele = 0;
+    double ele_min_dr2 = 999999.;
+    double ele_ptR = 999999.;
+
+    int genpho = 0;
+    double pho_min_dr2 = 999999.;
+    double pho_ptR = 999999.;
+
+    double this_dr2 = 999999.;
+
     if (genParticlesHandle.isValid()) {
       for (std::vector<reco::GenParticle>::const_iterator ip = genParticlesHandle->begin(); ip != genParticlesHandle->end(); ++ip) {
 	const reco::Candidate *p = (const reco::Candidate*)&(*ip);
 	//std::cout << " p->pdgId() " << p->pdgId() << std::endl;
-	if ( std::abs(p->pdgId()) == 11 ) { 
+        //if ( std::abs(p->pdgId()) == 11 ) { 
 	  //std::cout << "-----  p->status() " << p->status() << " p->pdgId() " << p->pdgId() << std::endl;
-	}
-	if ( (p->status() == 1) and (std::abs(p->pdgId()) == 11) ) {
-	  //std::cout << "checking if the reco ele match with this one" << std::endl;
-	  double this_dr2 = reco::deltaR2(ele,*p);
-	  //std::cout << "this_dr " << this_dr << std::endl;
-	  if (this_dr2 < min_dr2) {
-	    min_dr2 = this_dr2;
-	    ptR = ele.pt() / p->pt();
+	//}
+
+	if ( p->status() == 1 ) {
+          if (std::abs(p->pdgId()) == 11 or std::abs(p->pdgId()) == 22)
+            this_dr2 = reco::deltaR2(ele,*p);
+          else 
+            continue;
+
+          if (std::abs(p->pdgId()) == 11 and this_dr2 < ele_min_dr2) {
+            ele_min_dr2 = this_dr2;
+            ele_ptR = ele.pt() / p->pt();
 	  }
-	}  
+
+          if (std::abs(p->pdgId()) == 22 and this_dr2 < pho_min_dr2) {
+            pho_min_dr2 = this_dr2;
+            pho_ptR = ele.pt() / p->pt();
+	  }
+	}
       }
     }
   
     // these cuts were decided looking at min_dr and ptR distributions.
-    if ( (min_dr2 < 0.0016) and (ptR > 0.7) && (ptR < 1.3) ) 
-      genmatch = 1;
-    ele_dR_reco_gen.emplace_back( std::sqrt(min_dr2) );
-    ele_pt_ratio_reco_gen.emplace_back(ptR);
-    ele_genmatch.emplace_back(genmatch);
+    if ( (ele_min_dr2 < 0.0016) and (ele_ptR > 0.7) && (ele_ptR < 1.3) ) 
+      genele = 1;
+    if ( (pho_min_dr2 < 0.0016) and (pho_ptR > 0.7) && (pho_ptR < 1.3) ) 
+      genpho = 1;
+
+    ele_dR_reco_genele.emplace_back( std::sqrt(ele_min_dr2) );
+    ele_rpt_reco_genele.emplace_back(ele_ptR);
+    ele_genele.emplace_back(genele);
+
+    ele_dR_reco_genpho.emplace_back( std::sqrt(pho_min_dr2) );
+    ele_rpt_reco_genpho.emplace_back(pho_ptR);
+    ele_genpho.emplace_back(genpho);
 
     ele_sc_eta.emplace_back(ele.superCluster()->eta());
     ele_sc_phi.emplace_back(ele.superCluster()->phi());
@@ -409,7 +451,7 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
     DetId seed = (seedCluster.hitsAndFractions())[0].first;
     bool isBarrel = seed.subdetId() == EcalBarrel;
-    const EcalRecHitCollection * rechits = (isBarrel?lazyTool.getEcalEBRecHitCollection():lazyTool.getEcalEERecHitCollection());
+    const EcalRecHitCollection * rechits = isBarrel ? lazyTool.getEcalEBRecHitCollection() : lazyTool.getEcalEERecHitCollection();
     EcalRecHitCollection::const_iterator theSeedHit = rechits->find(seed);
     if (theSeedHit != rechits->end()) {
       if ( (theSeedHit->id().rawId() != 0 ) ) {
@@ -541,9 +583,14 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert(((void) "ERROR: ele_sc_fbrem size doesn't match n_ele!!!", int(ele_sc_fbrem.size()) == n_ele));
   assert(((void) "ERROR: ele_nbrem size doesn't match n_ele!!!", int(ele_nbrem.size()) == n_ele));
 
-  assert(((void) "ERROR: ele_genmatch size doesn't match n_ele!!!", int(ele_genmatch.size()) == n_ele));
-  assert(((void) "ERROR: ele_pt_ratio_reco_gen size doesn't match n_ele!!!", int(ele_pt_ratio_reco_gen.size()) == n_ele));
-  assert(((void) "ERROR: ele_dR_reco_gen size doesn't match n_ele!!!", int(ele_dR_reco_gen.size()) == n_ele));
+  assert(((void) "ERROR: ele_genele size doesn't match n_ele!!!", int(ele_genele.size()) == n_ele));
+  assert(((void) "ERROR: ele_rpt_reco_genele size doesn't match n_ele!!!", int(ele_rpt_reco_genele.size()) == n_ele));
+  assert(((void) "ERROR: ele_dR_reco_genele size doesn't match n_ele!!!", int(ele_dR_reco_genele.size()) == n_ele));
+
+  assert(((void) "ERROR: ele_genpho size doesn't match n_ele!!!", int(ele_genpho.size()) == n_ele));
+  assert(((void) "ERROR: ele_rpt_reco_genpho size doesn't match n_ele!!!", int(ele_rpt_reco_genpho.size()) == n_ele));
+  assert(((void) "ERROR: ele_dR_reco_genpho size doesn't match n_ele!!!", int(ele_dR_reco_genpho.size()) == n_ele));
+
   assert(((void) "ERROR: ele_sc_energy size doesn't match n_ele!!!", int(ele_sc_energy.size()) == n_ele));
   assert(((void) "ERROR: ele_sc_raw_energy size doesn't match n_ele!!!", int(ele_sc_raw_energy.size()) == n_ele));
   assert(((void) "ERROR: ele_ecal_energy size doesn't match n_ele!!!", int(ele_ecal_energy.size()) == n_ele));
@@ -624,9 +671,10 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     for (int iE = 0; iE < n_ele; ++iE) {
       int dieta = calDIEta(ele_seed_hcal_ieta[iE], hcalhit_ieta.back());
       int diphi = calDIPhi(ele_seed_hcal_iphi[iE], hcalhit_iphi.back());
+      float diR2 = float(dieta * dieta) + float(diphi * diphi);
 
-      if (float(dieta * dieta) + float(diphi * diphi) < min_diR2) {
-        min_diR2 = float(dieta * dieta) + float(diphi * diphi);
+      if (diR2 < min_diR2) {
+        min_diR2 = diR2;
         min_dieta = dieta;
         min_diphi = diphi;
         imin = iE;
@@ -735,9 +783,14 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   ele_sc_fbrem.reserve(cap_ele);
   ele_nbrem.reserve(cap_ele);
 
-  ele_genmatch.reserve(cap_ele);
-  ele_pt_ratio_reco_gen.reserve(cap_ele);
-  ele_dR_reco_gen.reserve(cap_ele);
+  ele_genele.reserve(cap_ele);
+  ele_rpt_reco_genele.reserve(cap_ele);
+  ele_dR_reco_genele.reserve(cap_ele);
+
+  ele_genpho.reserve(cap_ele);
+  ele_rpt_reco_genpho.reserve(cap_ele);
+  ele_dR_reco_genpho.reserve(cap_ele);
+
   ele_sc_energy.reserve(cap_ele);
   ele_sc_raw_energy.reserve(cap_ele);
   ele_ecal_energy.reserve(cap_ele);
@@ -803,6 +856,8 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
     tree->Branch("pu_true", &pu_true, "pu_true/F");
     tree->Branch("pu_obs", &pu_obs, "pu_obs/I");
     tree->Branch("rho", &rho, "rho/F");
+
+    tree->Branch("gen_weight", &gen_weight, "gen_weight/F");
   }
 
   static TBranch *b_ele_eb = tree->Branch("ele_eb", ele_eb.data(), "ele_eb[n_ele]/I");
@@ -823,16 +878,22 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   static TBranch *b_ele_track_fbrem = tree->Branch("ele_track_fbrem", ele_track_fbrem.data(), "ele_track_fbrem[n_ele]/F");
   static TBranch *b_ele_sc_fbrem = tree->Branch("ele_sc_fbrem", ele_sc_fbrem.data(), "ele_sc_fbrem[n_ele]/F");
   static TBranch *b_ele_nbrem = tree->Branch("ele_nbrem", ele_nbrem.data(), "ele_nbrem[n_ele]/I");
-  static TBranch *b_ele_genmatch = tree->Branch("ele_genmatch", ele_genmatch.data(), "ele_genmatch[n_ele]/I");
-  static TBranch *b_ele_dR_reco_gen = tree->Branch("ele_dR_reco_gen", ele_dR_reco_gen.data(), "ele_dR_reco_gen[n_ele]/F");
-  static TBranch *b_ele_pt_ratio_reco_gen = tree->Branch("ele_pt_ratio_reco_gen", ele_pt_ratio_reco_gen.data(), "ele_pt_ratio_reco_gen[n_ele]/F");
+
+  static TBranch *b_ele_genele = tree->Branch("ele_genele", ele_genele.data(), "ele_genele[n_ele]/I");
+  static TBranch *b_ele_dR_reco_genele = tree->Branch("ele_dR_reco_genele", ele_dR_reco_genele.data(), "ele_dR_reco_genele[n_ele]/F");
+  static TBranch *b_ele_rpt_reco_genele = tree->Branch("ele_rpt_reco_genele", ele_rpt_reco_genele.data(), "ele_rpt_reco_genele[n_ele]/F");
+
+  static TBranch *b_ele_genpho = tree->Branch("ele_genpho", ele_genpho.data(), "ele_genpho[n_ele]/I");
+  static TBranch *b_ele_dR_reco_genpho = tree->Branch("ele_dR_reco_genpho", ele_dR_reco_genpho.data(), "ele_dR_reco_genpho[n_ele]/F");
+  static TBranch *b_ele_rpt_reco_genpho = tree->Branch("ele_rpt_reco_genpho", ele_rpt_reco_genpho.data(), "ele_rpt_reco_genpho[n_ele]/F");
+
   static TBranch *b_ele_sc_energy = tree->Branch("ele_sc_energy", ele_sc_energy.data(), "ele_sc_energy[n_ele]/F");
   static TBranch *b_ele_sc_raw_energy = tree->Branch("ele_sc_raw_energy", ele_sc_raw_energy.data(), "ele_sc_raw_energy[n_ele]/F");
   static TBranch *b_ele_ecal_energy = tree->Branch("ele_ecal_energy", ele_ecal_energy.data(), "ele_ecal_energy[n_ele]/F");
   static TBranch *b_ele_seed_energy = tree->Branch("ele_seed_energy", ele_seed_energy.data(), "ele_seed_energy[n_ele]/F");
   static TBranch *b_ele_seed_corr_energy = tree->Branch("ele_seed_corr_energy", ele_seed_corr_energy.data(), "ele_seed_corr_energy[n_ele]/F");
-  static TBranch *b_ele_cmssw_hoe = tree->Branch("ele_cmssw_hoe", ele_cmssw_hoe.data(), "cmssw_hoe[n_ele]/F");
-  static TBranch *b_ele_cmssw_hoe_tower = tree->Branch("ele_cmssw_hoe_tower", ele_cmssw_hoe_tower.data(), "cmssw_hoe_tower[n_ele]/F");
+  static TBranch *b_ele_cmssw_hoe = tree->Branch("ele_cmssw_hoe", ele_cmssw_hoe.data(), "ele_cmssw_hoe[n_ele]/F");
+  static TBranch *b_ele_cmssw_hoe_tower = tree->Branch("ele_cmssw_hoe_tower", ele_cmssw_hoe_tower.data(), "ele_cmssw_hoe_tower[n_ele]/F");
   static TBranch *b_ele_cmssw_hoe_5x5 = tree->Branch("ele_cmssw_hoe_5x5", ele_cmssw_hoe_5x5.data(), "ele_cmssw_hoe_5x5[n_ele]/F");
   static TBranch *b_ele_sc_eta = tree->Branch("ele_sc_eta", ele_sc_eta.data(), "ele_sc_eta[n_ele]/F");
   static TBranch *b_ele_sc_phi = tree->Branch("ele_sc_phi", ele_sc_phi.data(), "ele_sc_phi[n_ele]/F");
@@ -897,9 +958,15 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
     b_ele_track_fbrem->SetAddress(ele_track_fbrem.data());
     b_ele_sc_fbrem->SetAddress(ele_sc_fbrem.data());
     b_ele_nbrem->SetAddress(ele_nbrem.data());
-    b_ele_genmatch->SetAddress(ele_genmatch.data());
-    b_ele_dR_reco_gen->SetAddress(ele_dR_reco_gen.data());
-    b_ele_pt_ratio_reco_gen->SetAddress(ele_pt_ratio_reco_gen.data());
+
+    b_ele_genele->SetAddress(ele_genele.data());
+    b_ele_dR_reco_genele->SetAddress(ele_dR_reco_genele.data());
+    b_ele_rpt_reco_genele->SetAddress(ele_rpt_reco_genele.data());
+
+    b_ele_genpho->SetAddress(ele_genpho.data());
+    b_ele_dR_reco_genpho->SetAddress(ele_dR_reco_genpho.data());
+    b_ele_rpt_reco_genpho->SetAddress(ele_rpt_reco_genpho.data());
+
     b_ele_sc_energy->SetAddress(ele_sc_energy.data());
     b_ele_sc_raw_energy->SetAddress(ele_sc_raw_energy.data());
     b_ele_ecal_energy->SetAddress(ele_ecal_energy.data());
