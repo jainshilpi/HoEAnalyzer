@@ -29,5 +29,5 @@
 <use   name="DataFormats/DetId"/>
 <use   name="DataFormats/EgammaReco"/>
 <use   name="CondFormats/EgammaObjects"/>
-
+<use   name="DataFormats/PatCandidates"/>
 <flags EDM_PLUGIN="1"/>

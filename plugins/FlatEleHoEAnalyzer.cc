@@ -51,6 +51,8 @@
 #include "DataFormats/CaloTowers/interface/CaloTowerDetId.h"
 #include "RecoEgamma/EgammaIsolationAlgos/interface/EGHcalRecHitSelector.h"
 
+#include "DataFormats/PatCandidates/interface/Electron.h"
+
 //
 // class declaration
 //
@@ -138,6 +140,27 @@ public:
   std::vector<int>    ele_seed_hcal_ieta;
   std::vector<int>    ele_seed_hcal_iphi;
 
+  std::vector<std::vector<int> > ele_IDbits;
+  std::vector<int>  ele_IDVeto;
+  std::vector<int>  ele_IDLoose;
+  std::vector<int>  ele_IDMedium;
+  std::vector<int>  ele_IDTight;
+  std::vector<int>  ele_IDMVAiso90;
+  std::vector<float>  ele_dEtaIn;
+  std::vector<float>  ele_dPhiIn;
+  std::vector<float>  ele_1oEm1op;
+  std::vector<float>  ele_eSCoP;
+  std::vector<float>  ele_eSCoPout;
+  std::vector<float>  ele_psEorawE;
+  std::vector<float>  ele_gsfTrackChi2;
+  //std::vector<float>  ele_convVtxFitProb;
+  std::vector<int>  ele_nHit;
+  std::vector<int>  ele_missingHit;
+  //std::vector<int>  ele_convVeto;
+  std::vector<int>  ele_isEcalDriven;
+  std::vector<int>  ele_IDHEEP;
+  std::vector<int>  ele_IDHEEPBit;
+
   int n_hcalhit;
   std::vector<int>    hcalhit_ieta;
   std::vector<int>    hcalhit_iphi;
@@ -171,7 +194,10 @@ private:
   int maxDIPhi_ = 5;
 
   // ----------member data ---------------------------
-  edm::EDGetTokenT<edm::View<reco::GsfElectron> > eleToken_;
+  //edm::EDGetTokenT<edm::View<reco::GsfElectron> > eleToken_;
+
+  edm::EDGetTokenT<edm::View<pat::Electron> > eleToken_;
+
   edm::EDGetTokenT<std::vector<PileupSummaryInfo> > puCollection_;
   edm::EDGetTokenT<double> rhoToken_;
   edm::EDGetTokenT<GenEventInfoProduct> genEventToken_;
@@ -183,6 +209,15 @@ private:
   edm::ESHandle<CaloTowerConstituentsMap> towerMap_;
   edm::EDGetTokenT<std::vector<reco::GenParticle> > genParticlesCollection_;
 
+  /*
+  edm::EDGetTokenT<edm::ValueMap<bool> > vidPassToken_;
+  edm::EDGetTokenT<edm::ValueMap<unsigned int> > vidBitmapToken_;
+  edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> >  vidResultToken_;
+  
+  
+  edm::EDGetTokenT<edm::ValueMap<float> > trkIsoMapToken_; 
+  */
+  
   std::string output;
   bool Run2_2018 ; // Now two options are supported, Run2_2018 and Run3
 };
@@ -199,7 +234,10 @@ private:
 // constructors and destructor
 //
 FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig) :
-  eleToken_(consumes<edm::View<reco::GsfElectron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
+  //eleToken_(consumes<edm::View<reco::GsfElectron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
+
+  eleToken_(consumes<edm::View<pat::Electron> >(iConfig.getParameter<edm::InputTag>("electrons"))),
+
   puCollection_(consumes<std::vector<PileupSummaryInfo> >(iConfig.getParameter<edm::InputTag>("pileupCollection"))),
   rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoSrc"))),
   genEventToken_(consumes<GenEventInfoProduct>(iConfig.getParameter<edm::InputTag>("genEventSrc"))),
@@ -210,8 +248,17 @@ FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig) :
   genParticlesCollection_(consumes<std::vector<reco::GenParticle> >(iConfig.getParameter<edm::InputTag>("genParticleSrc"))),
   output(iConfig.getParameter<std::string>("output_file")),
   Run2_2018(iConfig.getParameter<bool>("Run2_2018_"))
+ 
 {
   //now do what ever initialization is needed
+
+  /*
+  vidPassToken_=consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("vid"));
+  vidBitmapToken_=consumes<edm::ValueMap<unsigned int> >(iConfig.getParameter<edm::InputTag>("vidBitmap"));
+  vidResultToken_=consumes<edm::ValueMap<vid::CutFlowResult> >(iConfig.getParameter<edm::InputTag>("vid"));
+  trkIsoMapToken_=consumes<edm::ValueMap<float> >(iConfig.getParameter<edm::InputTag>("trkIsoMap"));
+  */
+
 }
 
 
@@ -301,6 +348,30 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   ele_seed_hcal_ieta.clear();
   ele_seed_hcal_iphi.clear();
 
+  ////Electron ID variables
+  ele_dEtaIn.clear();
+  ele_dPhiIn.clear();
+  ele_psEorawE.clear();
+  ele_1oEm1op.clear();
+  ele_eSCoP.clear();
+  ele_eSCoPout.clear();
+  //ele_convVtxFitProb.clear();
+  ele_gsfTrackChi2.clear();
+  ele_nHit.clear();
+  ele_missingHit.clear();
+  //ele_convVeto.clear();
+  ele_IDVeto.clear();
+  ele_IDLoose.clear();
+  ele_IDMedium.clear();
+  ele_IDTight.clear();
+  ele_IDMVAiso90.clear();
+  ele_IDbits.clear();
+  ele_isEcalDriven.clear();
+  //ele_TrackIso.clear();
+  ele_IDHEEP.clear();
+  //ele_IDHEEPBit.clear();
+  
+
   n_hcalhit = 0;
   hcalhit_ieta.clear();
   hcalhit_iphi.clear();
@@ -324,6 +395,16 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   bunch_crossing = iEvent.eventAuxiliary().bunchCrossing();
   orbit_number = iEvent.eventAuxiliary().orbitNumber();
   store_number = iEvent.eventAuxiliary().storeNumber();
+
+  /*
+  ///getHeep rlated handles
+  iEvent.getByToken(vidPassToken_,vidPass);
+  iEvent.getByToken(vidBitmapToken_,vidBitmap);
+  iEvent.getByToken(vidResultToken_,vidResult);
+  iEvent.getByToken(trkIsoMapToken_,trkIsoMap);
+  */
+
+
 
   edm::Handle<std::vector<PileupSummaryInfo> > genPileupHandle;
   iEvent.getByToken(puCollection_, genPileupHandle);
@@ -364,9 +445,14 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   if (iEvent.get(eleToken_).size() > ele_golden.capacity())
     reallocate_setaddress(iEvent.get(eleToken_).size(), 0);
 
+  //std::cout<<"Outside electron loop "<<std::endl;
+  
   for (const auto& ele : iEvent.get(eleToken_)) {
     int genele = 0;
     double ele_min_dr2 = 999999.;
+  
+    //std::cout<<"Inside electron loop "<<std::endl;
+    
     double ele_ptR = 999999.;
 
     int genpho = 0;
@@ -437,6 +523,51 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_detiso03_hcaltower2.emplace_back(ele.dr03HcalDepth2TowerSumEt());
     ele_detiso03_trk.emplace_back(ele.dr03TkSumPt());
     ele_detiso03_trk_heep.emplace_back(ele.dr03TkSumPtHEEP());
+
+    ///fill other ID variables
+    ele_dEtaIn.emplace_back(ele.deltaEtaSuperClusterTrackAtVtx());
+    ele_dPhiIn.emplace_back(ele.deltaPhiSuperClusterTrackAtVtx());
+    
+    bool isPassVeto   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-veto");
+    bool isPassLoose   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-loose");
+    bool isPassMedium   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-medium");
+    bool isPassTight   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-tight");
+    bool isPassMVAiso90 = ele.electronID("mvaEleID-Fall17-iso-V2-wp90");
+
+    bool isPassHEEP = ele.electronID("heepElectronID-HEEPV70");
+
+    ele_IDVeto.push_back((int)isPassVeto);
+    ele_IDLoose.push_back((int)isPassLoose);
+    ele_IDMedium.push_back((int)isPassMedium);
+    ele_IDTight.push_back((int)isPassTight);
+    ele_IDMVAiso90.push_back((int)isPassMVAiso90);
+    ele_IDHEEP.push_back((int)isPassHEEP);
+    
+
+    ele_IDbits.push_back({          
+	ele.userInt("cutBasedElectronID-Fall17-94X-V2-veto"),
+	  ele.userInt("cutBasedElectronID-Fall17-94X-V2-loose"),
+	  ele.userInt("cutBasedElectronID-Fall17-94X-V2-medium"),
+	  ele.userInt("cutBasedElectronID-Fall17-94X-V2-tight"),
+	  ele.userInt("heepElectronID-HEEPV70")}
+	  //ele.userInt("heepElectronID-HEEPV70Bitmap")}
+
+      );
+    
+
+    ele_missingHit.push_back(ele.gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS));
+    ele_nHit.push_back(ele.gsfTrack()->hitPattern().trackerLayersWithMeasurement());
+    ele_gsfTrackChi2.push_back(ele.gsfTrack()->normalizedChi2());
+    ele_eSCoP.push_back(ele.eSuperClusterOverP());
+    ele_eSCoPout.push_back(ele.eEleClusterOverPout());
+    ele_1oEm1op.push_back( (1.0/ele.ecalEnergy()) - (1.0/ele.trackMomentumAtVtx().r()) );
+    ele_psEorawE.push_back( ele.superCluster()->preshowerEnergy()/ele.superCluster()->rawEnergy() );
+    ele_isEcalDriven.push_back(ele.ecalDrivenSeed());
+
+  
+    //std::cout<<"SC eta : phi : IDveto :  IDbits "<<ele_sc_eta[n_ele]<<" "<<ele_sc_phi[n_ele]<<" "<<ele_IDVeto[n_ele]<<" "<<ele_IDbits[n_ele][4]<<std::endl;
+    //ele_convVtxFitProb.push_back();
+
 
     EcalClusterLazyTools lazyTool(iEvent, iSetup, ebReducedRecHitCollection_, eeReducedRecHitCollection_, esReducedRecHitCollection_);
 
@@ -830,6 +961,27 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   ele_seed_hcal_ieta.reserve(cap_ele);
   ele_seed_hcal_iphi.reserve(cap_ele);
 
+  ele_dEtaIn.reserve(cap_ele);
+  ele_dPhiIn.reserve(cap_ele);
+  ele_psEorawE.reserve(cap_ele);
+  ele_1oEm1op.reserve(cap_ele);
+  ele_eSCoP.reserve(cap_ele);
+  ele_eSCoPout.reserve(cap_ele);
+  //ele_convVtxFitProb.reserve(cap_ele);
+  ele_gsfTrackChi2.reserve(cap_ele);
+  ele_nHit.reserve(cap_ele);
+  ele_missingHit.reserve(cap_ele);
+  ele_IDVeto.reserve(cap_ele);
+  ele_IDLoose.reserve(cap_ele);
+  ele_IDMedium.reserve(cap_ele);
+  ele_IDTight.reserve(cap_ele);
+  ele_IDMVAiso90.reserve(cap_ele);
+  ele_IDbits.reserve(cap_ele);
+  ele_isEcalDriven.reserve(cap_ele);
+  ele_IDHEEP.reserve(cap_ele);
+
+  
+
   static int cap_hcalhit = 128;
   cap_hcalhit = (n_hcalhit_ == 0) ? cap_hcalhit : n_hcalhit_;
   hcalhit_ieta.reserve(cap_hcalhit);
@@ -937,8 +1089,51 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   static TBranch *b_hcalhit_eta = tree->Branch("hcalhit_eta", hcalhit_eta.data(), "hcalhit_eta[n_hcalhit]/F");
   static TBranch *b_hcalhit_phi = tree->Branch("hcalhit_phi", hcalhit_phi.data(), "hcalhit_phi[n_hcalhit]/F");
 
+
+  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele]/I");
+  static TBranch *b_ele_IDVeto = tree->Branch("ele_IDVeto", ele_IDVeto.data(), "ele_IDVeto[n_ele]/I");
+  static TBranch *b_ele_IDLoose = tree->Branch("ele_IDLoose", ele_IDLoose.data(),"ele_IDLoose[n_ele]/I");
+  static TBranch *b_ele_IDMedium = tree->Branch("ele_IDMedium", ele_IDMedium.data(),"ele_IDMedium[n_ele]/I");
+  static TBranch *b_ele_IDTight = tree->Branch("ele_IDTight", ele_IDTight.data(),"ele_IDTight[n_ele]/I");
+  static TBranch *b_ele_IDMVAiso90 = tree->Branch("ele_IDMVAiso90", ele_IDMVAiso90.data(),"ele_IDMVAiso90[n_ele]/I");
+  static TBranch *b_ele_IDHEEP = tree->Branch("ele_IDHEEP", ele_IDHEEP.data(),"ele_IDHEEP[n_ele]/I");
+  static TBranch *b_ele_dEtaIn = tree->Branch("ele_dEtaIn", ele_dEtaIn.data(),"ele_dEtaIn[n_ele]/F");
+  static TBranch *b_ele_dPhiIn = tree->Branch("ele_dPhiIn", ele_dPhiIn.data(),"ele_dPhiIn[n_ele]/F");
+  static TBranch *b_ele_psEorawE = tree->Branch("ele_psEorawE", ele_psEorawE.data(),"ele_psEorawE[n_ele]/F");
+  static TBranch *b_ele_1oEm1op = tree->Branch("ele_1oEm1op",ele_1oEm1op.data(),"ele_1oEm1op[n_ele]/F");
+  static TBranch *b_ele_eSCoP = tree->Branch("ele_eSCoP",ele_eSCoP.data(),"ele_eSCoP[n_ele]/F");
+  static TBranch *b_ele_eSCoPout = tree->Branch("ele_eSCoPout",ele_eSCoPout.data(),"ele_eSCoPout[n_ele]/F");
+  
+  //tree->Branch("ele_convVtxFitProb",ele_convVtxFitProb.data(),"ele_convVtxFitProb[n_ele]/I");
+  
+  static TBranch *b_ele_gsfTrackChi2 = tree->Branch("ele_gsfTrackChi2",ele_gsfTrackChi2.data(),"ele_gsfTrackChi2[n_ele]/F");
+  static TBranch *b_ele_nHit = tree->Branch("ele_nHit",ele_nHit.data(),"ele_nHit[n_ele]/I");
+  static TBranch *b_ele_missingHit = tree->Branch("ele_missingHit",ele_missingHit.data(),"ele_missingHit[n_ele]/I");
+  static TBranch *b_ele_isEcalDriven = tree->Branch("ele_isEcalDriven",ele_isEcalDriven.data(),"ele_isEcalDriven[n_ele]/I");
+
+
   if (n_ele_ != 0) {
-    std::cout << "Electron block realloc to " << ele_golden.capacity() << "..." << std::endl;
+  //if(1) {
+    //std::cout << "Electron block realloc to " << ele_golden.capacity() << "..." << std::endl;
+
+
+    b_ele_IDbits->SetAddress(ele_IDbits.data());
+    b_ele_IDVeto->SetAddress(ele_IDVeto.data());
+    b_ele_IDLoose->SetAddress(ele_IDLoose.data());
+    b_ele_IDMedium->SetAddress(ele_IDMedium.data());
+    b_ele_IDTight->SetAddress(ele_IDTight.data());
+    b_ele_IDMVAiso90->SetAddress(ele_IDMVAiso90.data());
+    b_ele_IDHEEP->SetAddress(ele_IDHEEP.data());
+    b_ele_dEtaIn->SetAddress(ele_dEtaIn.data());
+    b_ele_dPhiIn->SetAddress(ele_dPhiIn.data());
+    b_ele_psEorawE->SetAddress(ele_psEorawE.data());
+    b_ele_1oEm1op->SetAddress(ele_1oEm1op.data());
+    b_ele_eSCoP->SetAddress(ele_eSCoP.data());
+    b_ele_eSCoPout->SetAddress(ele_eSCoPout.data());
+    b_ele_gsfTrackChi2->SetAddress(ele_gsfTrackChi2.data());
+    b_ele_nHit->SetAddress(ele_nHit.data());
+    b_ele_missingHit->SetAddress(ele_missingHit.data());
+    b_ele_isEcalDriven->SetAddress(ele_isEcalDriven.data());
 
     b_ele_eb->SetAddress(ele_eb.data());
     b_ele_ee->SetAddress(ele_ee.data());
@@ -1008,7 +1203,7 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   }
 
   if (n_hcalhit_ != 0) {
-    std::cout << "Hcalhit block realloc to " << hcalhit_depth.capacity() << "..." << std::endl;
+    //std::cout << "Hcalhit block realloc to " << hcalhit_depth.capacity() << "..." << std::endl;
 
     b_hcalhit_ieta->SetAddress(hcalhit_ieta.data());
     b_hcalhit_iphi->SetAddress(hcalhit_iphi.data());
