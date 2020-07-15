@@ -525,8 +525,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_detiso03_trk_heep.emplace_back(ele.dr03TkSumPtHEEP());
 
     ///fill other ID variables
-    ele_dEtaIn.emplace_back(ele.deltaEtaSuperClusterTrackAtVtx());
-    ele_dPhiIn.emplace_back(ele.deltaPhiSuperClusterTrackAtVtx());
+    ele_dEtaIn.push_back(ele.deltaEtaSuperClusterTrackAtVtx());
+    ele_dPhiIn.push_back(ele.deltaPhiSuperClusterTrackAtVtx());
     
     bool isPassVeto   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-veto");
     bool isPassLoose   = ele.electronID("cutBasedElectronID-Fall17-94X-V2-loose");
@@ -543,7 +543,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ele_IDMVAiso90.push_back((int)isPassMVAiso90);
     ele_IDHEEP.push_back((int)isPassHEEP);
     
-
+    //ele_IDbits.push_back(0);
+    
     ele_IDbits.push_back({          
 	ele.userInt("cutBasedElectronID-Fall17-94X-V2-veto"),
 	  ele.userInt("cutBasedElectronID-Fall17-94X-V2-loose"),
@@ -551,7 +552,6 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 	  ele.userInt("cutBasedElectronID-Fall17-94X-V2-tight"),
 	  ele.userInt("heepElectronID-HEEPV70")}
 	  //ele.userInt("heepElectronID-HEEPV70Bitmap")}
-
       );
     
 
@@ -1090,7 +1090,7 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   static TBranch *b_hcalhit_phi = tree->Branch("hcalhit_phi", hcalhit_phi.data(), "hcalhit_phi[n_hcalhit]/F");
 
 
-  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele]/I");
+  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele][5]/I");
   static TBranch *b_ele_IDVeto = tree->Branch("ele_IDVeto", ele_IDVeto.data(), "ele_IDVeto[n_ele]/I");
   static TBranch *b_ele_IDLoose = tree->Branch("ele_IDLoose", ele_IDLoose.data(),"ele_IDLoose[n_ele]/I");
   static TBranch *b_ele_IDMedium = tree->Branch("ele_IDMedium", ele_IDMedium.data(),"ele_IDMedium[n_ele]/I");
