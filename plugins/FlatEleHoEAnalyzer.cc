@@ -554,6 +554,7 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 	  //ele.userInt("heepElectronID-HEEPV70Bitmap")}
       );
     
+    //std::cout<<"n_ele : ID bit for HEEP  : from the array : elePt : "<<n_ele<<" "<<ele.userInt("heepElectronID-HEEPV70")<<" "<<ele_IDbits[n_ele][4]<<" "<<ele_pt[n_ele]<<std::endl;
 
     ele_missingHit.push_back(ele.gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS));
     ele_nHit.push_back(ele.gsfTrack()->hitPattern().trackerLayersWithMeasurement());
@@ -976,7 +977,10 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   ele_IDMedium.reserve(cap_ele);
   ele_IDTight.reserve(cap_ele);
   ele_IDMVAiso90.reserve(cap_ele);
-  ele_IDbits.reserve(cap_ele);
+  
+  //for(int iele=0; iele<cap_ele; iele++)
+  //ele_IDbits[iele].reserve(5);
+
   ele_isEcalDriven.reserve(cap_ele);
   ele_IDHEEP.reserve(cap_ele);
 
@@ -1090,7 +1094,8 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   static TBranch *b_hcalhit_phi = tree->Branch("hcalhit_phi", hcalhit_phi.data(), "hcalhit_phi[n_hcalhit]/F");
 
 
-  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele][5]/I");
+  //static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele][5]/I");
+  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", &ele_IDbits);
   static TBranch *b_ele_IDVeto = tree->Branch("ele_IDVeto", ele_IDVeto.data(), "ele_IDVeto[n_ele]/I");
   static TBranch *b_ele_IDLoose = tree->Branch("ele_IDLoose", ele_IDLoose.data(),"ele_IDLoose[n_ele]/I");
   static TBranch *b_ele_IDMedium = tree->Branch("ele_IDMedium", ele_IDMedium.data(),"ele_IDMedium[n_ele]/I");
