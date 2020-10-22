@@ -259,6 +259,126 @@ FlatEleHoEAnalyzer::FlatEleHoEAnalyzer(const edm::ParameterSet& iConfig) :
   trkIsoMapToken_=consumes<edm::ValueMap<float> >(iConfig.getParameter<edm::InputTag>("trkIsoMap"));
   */
 
+
+  file = new TFile(output.c_str(), "recreate");
+  tree = new TTree("tree", "");
+  
+  tree->Branch("run", &run, "run/I");
+  tree->Branch("lumi_block", &lumi_block, "lumi_block/I");
+  tree->Branch("event", &event, "event/I");
+  tree->Branch("bunch_crossing", &bunch_crossing, "bunch_crossing/I");
+  tree->Branch("orbit_number", &orbit_number, "orbit_number/I");
+  tree->Branch("store_number", &store_number, "store_number/I");
+  
+  tree->Branch("n_ele", &n_ele, "n_ele/I");
+  tree->Branch("n_hcalhit", &n_hcalhit, "n_hcalhit/I");
+  tree->Branch("pu_true", &pu_true, "pu_true/F");
+  tree->Branch("pu_obs", &pu_obs, "pu_obs/I");
+  tree->Branch("rho", &rho, "rho/F");
+  
+  tree->Branch("gen_weight", &gen_weight, "gen_weight/F");
+  //}
+  
+  tree->Branch("ele_eb", &ele_eb);
+  tree->Branch("ele_ee", &ele_ee);
+  tree->Branch("ele_gap_eb_ee", &ele_gap_eb_ee);
+  tree->Branch("ele_gap_eb_eta", &ele_gap_eb_eta);
+  tree->Branch("ele_gap_eb_phi", &ele_gap_eb_phi);
+  tree->Branch("ele_gap_ee_dee", &ele_gap_ee_dee);
+  tree->Branch("ele_gap_ee_ring", &ele_gap_ee_ring);
+
+  tree->Branch("ele_golden", &ele_golden);
+  tree->Branch("ele_unknown", &ele_unknown);
+  tree->Branch("ele_bigbrem", &ele_bigbrem);
+  tree->Branch("ele_gap", &ele_gap);
+  tree->Branch("ele_badtrack", &ele_badtrack);
+  tree->Branch("ele_showering", &ele_showering);
+  
+  tree->Branch("ele_track_fbrem", &ele_track_fbrem);
+  tree->Branch("ele_sc_fbrem", &ele_sc_fbrem);
+  tree->Branch("ele_nbrem", &ele_nbrem);
+
+  tree->Branch("ele_genele", &ele_genele);
+  tree->Branch("ele_dR_reco_genele", &ele_dR_reco_genele);
+  tree->Branch("ele_rpt_reco_genele", &ele_rpt_reco_genele);
+  
+  tree->Branch("ele_genpho", &ele_genpho);
+  tree->Branch("ele_dR_reco_genpho", &ele_dR_reco_genpho);
+  tree->Branch("ele_rpt_reco_genpho", &ele_rpt_reco_genpho);
+  
+  tree->Branch("ele_sc_energy", &ele_sc_energy);
+  tree->Branch("ele_sc_raw_energy", &ele_sc_raw_energy);
+  tree->Branch("ele_ecal_energy", &ele_ecal_energy);
+  tree->Branch("ele_seed_energy", &ele_seed_energy);
+  tree->Branch("ele_seed_corr_energy", &ele_seed_corr_energy);
+  tree->Branch("ele_cmssw_hoe", &ele_cmssw_hoe);
+  tree->Branch("ele_cmssw_hoe_tower", &ele_cmssw_hoe_tower);
+  tree->Branch("ele_cmssw_hoe_5x5", &ele_cmssw_hoe_5x5);
+  tree->Branch("ele_sc_eta", &ele_sc_eta);
+  tree->Branch("ele_sc_phi", &ele_sc_phi);
+  tree->Branch("ele_pt", &ele_pt);
+  tree->Branch("ele_eta", &ele_pt);
+  tree->Branch("ele_phi", &ele_phi);
+  tree->Branch("ele_sieie_5x5", &ele_sieie_5x5);
+  tree->Branch("ele_r9_5x5", &ele_r9_5x5);
+
+  tree->Branch("ele_pfiso_pho", &ele_pfiso_pho);
+  tree->Branch("ele_pfiso_neu", &ele_pfiso_neu);
+  tree->Branch("ele_pfiso_cha", &ele_pfiso_cha);
+  tree->Branch("ele_pfiso_pu", &ele_pfiso_pu);
+  tree->Branch("ele_pfiso_hcal", &ele_pfiso_hcal);
+  tree->Branch("ele_pfiso_ecal", &ele_pfiso_ecal);
+
+  tree->Branch("ele_detiso03_ecalhit", &ele_detiso03_ecalhit);
+  tree->Branch("ele_detiso03_hcaltower1", &ele_detiso03_hcaltower1);
+  tree->Branch("ele_detiso03_hcaltower2", &ele_detiso03_hcaltower2);
+  tree->Branch("ele_detiso03_trk", &ele_detiso03_trk);
+  tree->Branch("ele_detiso03_trk_heep", &ele_detiso03_trk_heep);
+
+  tree->Branch("ele_seed_detid", &ele_seed_detid);
+  tree->Branch("ele_seed_subdetid", &ele_seed_subdetid);
+  tree->Branch("ele_seed_ieta", &ele_seed_ieta);
+  tree->Branch("ele_seed_iphi", &ele_seed_iphi);
+  tree->Branch("ele_seed_eta", &ele_seed_eta);
+  tree->Branch("ele_seed_phi", &ele_seed_phi);
+  tree->Branch("ele_seed_raw_id", &ele_seed_raw_id);
+  tree->Branch("ele_seed_hcal_ieta", &ele_seed_hcal_ieta);
+  tree->Branch("ele_seed_hcal_iphi", &ele_seed_hcal_iphi);
+  
+  tree->Branch("hcalhit_ieta", &hcalhit_ieta);
+  tree->Branch("hcalhit_iphi", &hcalhit_iphi);
+  tree->Branch("hcalhit_energy", &hcalhit_energy);
+  tree->Branch("hcalhit_seed_dieta", &hcalhit_seed_dieta);
+  tree->Branch("hcalhit_seed_diphi", &hcalhit_seed_diphi);
+  tree->Branch("hcalhit_raw_id", &hcalhit_raw_id);
+  tree->Branch("hcalhit_depth", &hcalhit_depth);
+  tree->Branch("hcalhit_ele_index", &hcalhit_ele_index);
+  tree->Branch("hcalhit_eta", &hcalhit_eta);
+  tree->Branch("hcalhit_phi", &hcalhit_phi);
+
+
+  tree->Branch("ele_IDbits", &ele_IDbits);
+  tree->Branch("ele_IDVeto", &ele_IDVeto);
+  tree->Branch("ele_IDLoose", &ele_IDLoose);
+  tree->Branch("ele_IDMedium", &ele_IDMedium);
+  tree->Branch("ele_IDTight", &ele_IDTight);
+  tree->Branch("ele_IDMVAiso90", &ele_IDMVAiso90);
+  tree->Branch("ele_IDHEEP", &ele_IDHEEP);
+  tree->Branch("ele_dEtaIn", &ele_dEtaIn);
+  tree->Branch("ele_dPhiIn", &ele_dPhiIn);
+  tree->Branch("ele_psEorawE", &ele_psEorawE);
+  tree->Branch("ele_1oEm1op", &ele_1oEm1op);
+  tree->Branch("ele_eSCoP", &ele_eSCoP);
+  tree->Branch("ele_eSCoPout", &ele_eSCoPout);
+  
+  //tree->Branch("ele_convVtxFitProb",ele_convVtxFitProb.data(),"ele_convVtxFitProb[n_ele]/I");
+  
+  tree->Branch("ele_gsfTrackChi2", &ele_gsfTrackChi2);
+  tree->Branch("ele_nHit", &ele_nHit);
+  tree->Branch("ele_missingHit", &ele_missingHit);
+  tree->Branch("ele_isEcalDriven", &ele_isEcalDriven);
+
+
 }
 
 
@@ -442,8 +562,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::Handle<std::vector<reco::GenParticle> > genParticlesHandle;
   iEvent.getByToken(genParticlesCollection_, genParticlesHandle);
 
-  if (iEvent.get(eleToken_).size() > ele_golden.capacity())
-    reallocate_setaddress(iEvent.get(eleToken_).size(), 0);
+  //if (iEvent.get(eleToken_).size() > ele_golden.capacity())
+  //reallocate_setaddress(iEvent.get(eleToken_).size(), 0);
 
   //std::cout<<"Outside electron loop "<<std::endl;
   
@@ -762,8 +882,8 @@ FlatEleHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert(((void) "ERROR: ele_seed_hcal_ieta size doesn't match n_ele!!!", int(ele_seed_hcal_ieta.size()) == n_ele));
   assert(((void) "ERROR: ele_seed_hcal_iphi size doesn't match n_ele!!!", int(ele_seed_hcal_iphi.size()) == n_ele));
 
-  if (iEvent.get(hbhe_rechits_).size() > hcalhit_depth.capacity())
-      reallocate_setaddress(0, iEvent.get(hbhe_rechits_).size());
+  //if (iEvent.get(hbhe_rechits_).size() > hcalhit_depth.capacity())
+  //reallocate_setaddress(0, iEvent.get(hbhe_rechits_).size());
 
   for (auto& hcalrh : iEvent.get(hbhe_rechits_)) {
     if (hcalrh.energy() < getMinEnergyHCAL(hcalrh.id()))
@@ -893,9 +1013,11 @@ float FlatEleHoEAnalyzer::getMinEnergyHCAL(HcalDetId id) const {
 
 void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
 {
-  static int cap_ele = 8;
-  cap_ele = (n_ele_ == 0) ? cap_ele : n_ele_;
 
+  /*
+    static int cap_ele = 8;
+  cap_ele = (n_ele_ == 0) ? cap_ele : n_ele_;
+ 
   ele_eb.reserve(cap_ele);
   ele_ee.reserve(cap_ele);
   ele_gap_eb_ee.reserve(cap_ele);
@@ -986,7 +1108,8 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
 
   
 
-  static int cap_hcalhit = 128;
+  //static int cap_hcalhit = 128;
+  static int cap_hcalhit = 500;
   cap_hcalhit = (n_hcalhit_ == 0) ? cap_hcalhit : n_hcalhit_;
   hcalhit_ieta.reserve(cap_hcalhit);
   hcalhit_iphi.reserve(cap_hcalhit);
@@ -998,131 +1121,18 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
   hcalhit_ele_index.reserve(cap_hcalhit);
   hcalhit_eta.reserve(cap_hcalhit);
   hcalhit_phi.reserve(cap_hcalhit);
+  */
 
-  if (n_ele_ == 0 and n_hcalhit_ == 0) {
-    tree->Branch("run", &run, "run/I");
-    tree->Branch("lumi_block", &lumi_block, "lumi_block/I");
-    tree->Branch("event", &event, "event/I");
-    tree->Branch("bunch_crossing", &bunch_crossing, "bunch_crossing/I");
-    tree->Branch("orbit_number", &orbit_number, "orbit_number/I");
-    tree->Branch("store_number", &store_number, "store_number/I");
-
-    tree->Branch("n_ele", &n_ele, "n_ele/I");
-    tree->Branch("n_hcalhit", &n_hcalhit, "n_hcalhit/I");
-    tree->Branch("pu_true", &pu_true, "pu_true/F");
-    tree->Branch("pu_obs", &pu_obs, "pu_obs/I");
-    tree->Branch("rho", &rho, "rho/F");
-
-    tree->Branch("gen_weight", &gen_weight, "gen_weight/F");
-  }
-
-  static TBranch *b_ele_eb = tree->Branch("ele_eb", ele_eb.data(), "ele_eb[n_ele]/I");
-  static TBranch *b_ele_ee = tree->Branch("ele_ee", ele_ee.data(), "ele_ee[n_ele]/I");
-  static TBranch *b_ele_gap_eb_ee = tree->Branch("ele_gap_eb_ee", ele_gap_eb_ee.data(), "ele_gap_eb_ee[n_ele]/I");
-  static TBranch *b_ele_gap_eb_eta = tree->Branch("ele_gap_eb_eta", ele_gap_eb_eta.data(), "ele_gap_eb_eta[n_ele]/I");
-  static TBranch *b_ele_gap_eb_phi = tree->Branch("ele_gap_eb_phi", ele_gap_eb_phi.data(), "ele_gap_eb_phi[n_ele]/I");
-  static TBranch *b_ele_gap_ee_dee = tree->Branch("ele_gap_ee_dee", ele_gap_ee_dee.data(), "ele_gap_ee_dee[n_ele]/I");
-  static TBranch *b_ele_gap_ee_ring = tree->Branch("ele_gap_ee_ring", ele_gap_ee_ring.data(), "ele_gap_ee_ring[n_ele]/I");
-
-  static TBranch *b_ele_golden = tree->Branch("ele_golden", ele_golden.data(), "ele_golden[n_ele]/I");
-  static TBranch *b_ele_unknown = tree->Branch("ele_unknown", ele_unknown.data(), "ele_unknown[n_ele]/I");
-  static TBranch *b_ele_bigbrem = tree->Branch("ele_bigbrem", ele_bigbrem.data(), "ele_bigbrem[n_ele]/I");
-  static TBranch *b_ele_gap = tree->Branch("ele_gap", ele_gap.data(), "ele_gap[n_ele]/I");
-  static TBranch *b_ele_badtrack = tree->Branch("ele_badtrack", ele_badtrack.data(), "ele_badtrack[n_ele]/I");
-  static TBranch *b_ele_showering = tree->Branch("ele_showering", ele_showering.data(), "ele_showering[n_ele]/I");
-
-  static TBranch *b_ele_track_fbrem = tree->Branch("ele_track_fbrem", ele_track_fbrem.data(), "ele_track_fbrem[n_ele]/F");
-  static TBranch *b_ele_sc_fbrem = tree->Branch("ele_sc_fbrem", ele_sc_fbrem.data(), "ele_sc_fbrem[n_ele]/F");
-  static TBranch *b_ele_nbrem = tree->Branch("ele_nbrem", ele_nbrem.data(), "ele_nbrem[n_ele]/I");
-
-  static TBranch *b_ele_genele = tree->Branch("ele_genele", ele_genele.data(), "ele_genele[n_ele]/I");
-  static TBranch *b_ele_dR_reco_genele = tree->Branch("ele_dR_reco_genele", ele_dR_reco_genele.data(), "ele_dR_reco_genele[n_ele]/F");
-  static TBranch *b_ele_rpt_reco_genele = tree->Branch("ele_rpt_reco_genele", ele_rpt_reco_genele.data(), "ele_rpt_reco_genele[n_ele]/F");
-
-  static TBranch *b_ele_genpho = tree->Branch("ele_genpho", ele_genpho.data(), "ele_genpho[n_ele]/I");
-  static TBranch *b_ele_dR_reco_genpho = tree->Branch("ele_dR_reco_genpho", ele_dR_reco_genpho.data(), "ele_dR_reco_genpho[n_ele]/F");
-  static TBranch *b_ele_rpt_reco_genpho = tree->Branch("ele_rpt_reco_genpho", ele_rpt_reco_genpho.data(), "ele_rpt_reco_genpho[n_ele]/F");
-
-  static TBranch *b_ele_sc_energy = tree->Branch("ele_sc_energy", ele_sc_energy.data(), "ele_sc_energy[n_ele]/F");
-  static TBranch *b_ele_sc_raw_energy = tree->Branch("ele_sc_raw_energy", ele_sc_raw_energy.data(), "ele_sc_raw_energy[n_ele]/F");
-  static TBranch *b_ele_ecal_energy = tree->Branch("ele_ecal_energy", ele_ecal_energy.data(), "ele_ecal_energy[n_ele]/F");
-  static TBranch *b_ele_seed_energy = tree->Branch("ele_seed_energy", ele_seed_energy.data(), "ele_seed_energy[n_ele]/F");
-  static TBranch *b_ele_seed_corr_energy = tree->Branch("ele_seed_corr_energy", ele_seed_corr_energy.data(), "ele_seed_corr_energy[n_ele]/F");
-  static TBranch *b_ele_cmssw_hoe = tree->Branch("ele_cmssw_hoe", ele_cmssw_hoe.data(), "ele_cmssw_hoe[n_ele]/F");
-  static TBranch *b_ele_cmssw_hoe_tower = tree->Branch("ele_cmssw_hoe_tower", ele_cmssw_hoe_tower.data(), "ele_cmssw_hoe_tower[n_ele]/F");
-  static TBranch *b_ele_cmssw_hoe_5x5 = tree->Branch("ele_cmssw_hoe_5x5", ele_cmssw_hoe_5x5.data(), "ele_cmssw_hoe_5x5[n_ele]/F");
-  static TBranch *b_ele_sc_eta = tree->Branch("ele_sc_eta", ele_sc_eta.data(), "ele_sc_eta[n_ele]/F");
-  static TBranch *b_ele_sc_phi = tree->Branch("ele_sc_phi", ele_sc_phi.data(), "ele_sc_phi[n_ele]/F");
-  static TBranch *b_ele_pt = tree->Branch("ele_pt", ele_pt.data(), "ele_pt[n_ele]/F");
-  static TBranch *b_ele_eta = tree->Branch("ele_eta", ele_pt.data(), "ele_eta[n_ele]/F");
-  static TBranch *b_ele_phi = tree->Branch("ele_phi", ele_phi.data(), "ele_phi[n_ele]/F");
-  static TBranch *b_ele_sieie_5x5 = tree->Branch("ele_sieie_5x5", ele_sieie_5x5.data(), "ele_sieie_5x5[n_ele]/F");
-  static TBranch *b_ele_r9_5x5 = tree->Branch("ele_r9_5x5", ele_r9_5x5.data(), "ele_r9_5x5[n_ele]/F");
-
-  static TBranch *b_ele_pfiso_pho = tree->Branch("ele_pfiso_pho", ele_pfiso_pho.data(), "ele_pfiso_pho[n_ele]/F");
-  static TBranch *b_ele_pfiso_neu = tree->Branch("ele_pfiso_neu", ele_pfiso_neu.data(), "ele_pfiso_neu[n_ele]/F");
-  static TBranch *b_ele_pfiso_cha = tree->Branch("ele_pfiso_cha", ele_pfiso_cha.data(), "ele_pfiso_cha[n_ele]/F");
-  static TBranch *b_ele_pfiso_pu = tree->Branch("ele_pfiso_pu", ele_pfiso_pu.data(), "ele_pfiso_pu[n_ele]/F");
-  static TBranch *b_ele_pfiso_hcal = tree->Branch("ele_pfiso_hcal", ele_pfiso_hcal.data(), "ele_pfiso_hcal[n_ele]/F");
-  static TBranch *b_ele_pfiso_ecal = tree->Branch("ele_pfiso_ecal", ele_pfiso_ecal.data(), "ele_pfiso_ecal[n_ele]/F");
-
-  static TBranch *b_ele_detiso03_ecalhit = tree->Branch("ele_detiso03_ecalhit", ele_detiso03_ecalhit.data(), "ele_detiso03_ecalhit[n_ele]/F");
-  static TBranch *b_ele_detiso03_hcaltower1 = tree->Branch("ele_detiso03_hcaltower1", ele_detiso03_hcaltower1.data(), "ele_detiso03_hcaltower1[n_ele]/F");
-  static TBranch *b_ele_detiso03_hcaltower2 = tree->Branch("ele_detiso03_hcaltower2", ele_detiso03_hcaltower2.data(), "ele_detiso03_hcaltower2[n_ele]/F");
-  static TBranch *b_ele_detiso03_trk = tree->Branch("ele_detiso03_trk", ele_detiso03_trk.data(), "ele_detiso03_trk[n_ele]/F");
-  static TBranch *b_ele_detiso03_trk_heep = tree->Branch("ele_detiso03_trk_heep", ele_detiso03_trk_heep.data(), "ele_detiso03_trk_heep[n_ele]/F");
-
-  static TBranch *b_ele_seed_detid = tree->Branch("ele_seed_detid", ele_seed_detid.data(), "ele_seed_detid[n_ele]/I");
-  static TBranch *b_ele_seed_subdetid = tree->Branch("ele_seed_subdetid", ele_seed_subdetid.data(), "ele_seed_subdetid[n_ele]/I");
-  static TBranch *b_ele_seed_ieta = tree->Branch("ele_seed_ieta", ele_seed_ieta.data(), "ele_seed_ieta[n_ele]/I");
-  static TBranch *b_ele_seed_iphi = tree->Branch("ele_seed_iphi", ele_seed_iphi.data(), "ele_seed_iphi[n_ele]/I");
-  static TBranch *b_ele_seed_eta = tree->Branch("ele_seed_eta", ele_seed_eta.data(), "ele_seed_eta[n_ele]/F");
-  static TBranch *b_ele_seed_phi = tree->Branch("ele_seed_phi", ele_seed_phi.data(), "ele_seed_phi[n_ele]/F");
-  static TBranch *b_ele_seed_raw_id = tree->Branch("ele_seed_raw_id", ele_seed_raw_id.data(), "ele_seed_raw_id[n_ele]/I");
-  static TBranch *b_ele_seed_hcal_ieta = tree->Branch("ele_seed_hcal_ieta", ele_seed_hcal_ieta.data(), "ele_seed_hcal_ieta[n_ele]/I");
-  static TBranch *b_ele_seed_hcal_iphi = tree->Branch("ele_seed_hcal_iphi", ele_seed_hcal_iphi.data(), "ele_seed_hcal_iphi[n_ele]/I");
-
-  static TBranch *b_hcalhit_ieta = tree->Branch("hcalhit_ieta", hcalhit_ieta.data(), "hcalhit_ieta[n_hcalhit]/I");
-  static TBranch *b_hcalhit_iphi = tree->Branch("hcalhit_iphi", hcalhit_iphi.data(), "hcalhit_iphi[n_hcalhit]/I");
-  static TBranch *b_hcalhit_energy = tree->Branch("hcalhit_energy", hcalhit_energy.data(), "hcalhit_energy[n_hcalhit]/F");
-  static TBranch *b_hcalhit_seed_dieta = tree->Branch("hcalhit_seed_dieta", hcalhit_seed_dieta.data(), "hcalhit_seed_dieta[n_hcalhit]/I");
-  static TBranch *b_hcalhit_seed_diphi = tree->Branch("hcalhit_seed_diphi", hcalhit_seed_diphi.data(), "hcalhit_seed_diphi[n_hcalhit]/I");
-  static TBranch *b_hcalhit_raw_id = tree->Branch("hcalhit_raw_id", hcalhit_raw_id.data(), "hcalhit_raw_id[n_hcalhit]/I");
-  static TBranch *b_hcalhit_depth = tree->Branch("hcalhit_depth", hcalhit_depth.data(), "hcalhit_depth[n_hcalhit]/I");
-  static TBranch *b_hcalhit_ele_index = tree->Branch("hcalhit_ele_index", hcalhit_ele_index.data(), "hcalhit_ele_index[n_hcalhit]/I");
-  static TBranch *b_hcalhit_eta = tree->Branch("hcalhit_eta", hcalhit_eta.data(), "hcalhit_eta[n_hcalhit]/F");
-  static TBranch *b_hcalhit_phi = tree->Branch("hcalhit_phi", hcalhit_phi.data(), "hcalhit_phi[n_hcalhit]/F");
-
-
-  //static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", ele_IDbits.data(), "ele_IDbits[n_ele][5]/I");
-  static TBranch *b_ele_IDbits = tree->Branch("ele_IDbits", &ele_IDbits);
-  static TBranch *b_ele_IDVeto = tree->Branch("ele_IDVeto", ele_IDVeto.data(), "ele_IDVeto[n_ele]/I");
-  static TBranch *b_ele_IDLoose = tree->Branch("ele_IDLoose", ele_IDLoose.data(),"ele_IDLoose[n_ele]/I");
-  static TBranch *b_ele_IDMedium = tree->Branch("ele_IDMedium", ele_IDMedium.data(),"ele_IDMedium[n_ele]/I");
-  static TBranch *b_ele_IDTight = tree->Branch("ele_IDTight", ele_IDTight.data(),"ele_IDTight[n_ele]/I");
-  static TBranch *b_ele_IDMVAiso90 = tree->Branch("ele_IDMVAiso90", ele_IDMVAiso90.data(),"ele_IDMVAiso90[n_ele]/I");
-  static TBranch *b_ele_IDHEEP = tree->Branch("ele_IDHEEP", ele_IDHEEP.data(),"ele_IDHEEP[n_ele]/I");
-  static TBranch *b_ele_dEtaIn = tree->Branch("ele_dEtaIn", ele_dEtaIn.data(),"ele_dEtaIn[n_ele]/F");
-  static TBranch *b_ele_dPhiIn = tree->Branch("ele_dPhiIn", ele_dPhiIn.data(),"ele_dPhiIn[n_ele]/F");
-  static TBranch *b_ele_psEorawE = tree->Branch("ele_psEorawE", ele_psEorawE.data(),"ele_psEorawE[n_ele]/F");
-  static TBranch *b_ele_1oEm1op = tree->Branch("ele_1oEm1op",ele_1oEm1op.data(),"ele_1oEm1op[n_ele]/F");
-  static TBranch *b_ele_eSCoP = tree->Branch("ele_eSCoP",ele_eSCoP.data(),"ele_eSCoP[n_ele]/F");
-  static TBranch *b_ele_eSCoPout = tree->Branch("ele_eSCoPout",ele_eSCoPout.data(),"ele_eSCoPout[n_ele]/F");
   
-  //tree->Branch("ele_convVtxFitProb",ele_convVtxFitProb.data(),"ele_convVtxFitProb[n_ele]/I");
-  
-  static TBranch *b_ele_gsfTrackChi2 = tree->Branch("ele_gsfTrackChi2",ele_gsfTrackChi2.data(),"ele_gsfTrackChi2[n_ele]/F");
-  static TBranch *b_ele_nHit = tree->Branch("ele_nHit",ele_nHit.data(),"ele_nHit[n_ele]/I");
-  static TBranch *b_ele_missingHit = tree->Branch("ele_missingHit",ele_missingHit.data(),"ele_missingHit[n_ele]/I");
-  static TBranch *b_ele_isEcalDriven = tree->Branch("ele_isEcalDriven",ele_isEcalDriven.data(),"ele_isEcalDriven[n_ele]/I");
+  //if (n_ele_ == 0 and n_hcalhit_ == 0) {
 
-
+  /*
   if (n_ele_ != 0) {
   //if(1) {
     //std::cout << "Electron block realloc to " << ele_golden.capacity() << "..." << std::endl;
 
 
-    b_ele_IDbits->SetAddress(ele_IDbits.data());
+    //b_ele_IDbits->SetAddress(ele_IDbits.data());
     b_ele_IDVeto->SetAddress(ele_IDVeto.data());
     b_ele_IDLoose->SetAddress(ele_IDLoose.data());
     b_ele_IDMedium->SetAddress(ele_IDMedium.data());
@@ -1221,6 +1231,7 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
     b_hcalhit_eta->SetAddress(hcalhit_eta.data());
     b_hcalhit_phi->SetAddress(hcalhit_phi.data());
   }
+  */
 }
 
 
@@ -1228,11 +1239,10 @@ void FlatEleHoEAnalyzer::reallocate_setaddress(int n_ele_, int n_hcalhit_)
 void
 FlatEleHoEAnalyzer::beginJob()
 {
-  file = new TFile(output.c_str(), "recreate");
-  tree = new TTree("tree", "");
-  tree->SetAutoSave(0);
-  tree->SetImplicitMT(false);
-  reallocate_setaddress();
+  //tree->SetAutoSave(0);
+
+  //tree->SetImplicitMT(false);
+  //reallocate_setaddress();
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
