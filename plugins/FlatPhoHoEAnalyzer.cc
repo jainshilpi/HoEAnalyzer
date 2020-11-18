@@ -55,6 +55,8 @@
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/PatCandidates/interface/Photon.h"
 
+#include "DataFormats/EgammaReco/interface/BasicCluster.h"
+
 //
 // class declaration
 //
@@ -109,6 +111,11 @@ public:
   std::vector<int>    pho_seed_iphi;
   std::vector<float>  pho_seed_eta;
   std::vector<float>  pho_seed_phi;
+
+  std::vector<int>    pho_nBCs;
+  std::vector<std::vector<float> >  pho_seedBC_eta;
+  std::vector<std::vector<float> >  pho_seedBC_phi;
+
   std::vector<int>    pho_seed_raw_id;
   std::vector<int>    pho_seed_hcal_ieta;
   std::vector<int>    pho_seed_hcal_iphi;
@@ -146,6 +153,8 @@ private:
   static int calDIPhi(int iPhi1, int iPhi2);
   void reallocate_setaddress(int n_pho_ = 0, int n_hcalhit_ = 0);
   float getMinEnergyHCAL(HcalDetId id) const;
+  bool GetSeedEtaPhi(bool isBarrel, DetId seedId, EcalClusterLazyTools lazyTool, double &var_pho_seed_eta, double &var_pho_seed_phi);
+  
 
   int maxDIEta_ = 5;
   int maxDIPhi_ = 5;
@@ -279,6 +288,11 @@ FlatPhoHoEAnalyzer::FlatPhoHoEAnalyzer(const edm::ParameterSet& iConfig) :
   tree->Branch("pho_seed_hcal_ieta", &pho_seed_hcal_ieta);
   tree->Branch("pho_seed_hcal_iphi", &pho_seed_hcal_iphi);
   
+  tree->Branch("pho_seedBC_eta", &pho_seedBC_eta);
+  tree->Branch("pho_seedBC_phi", &pho_seedBC_phi);
+
+  tree->Branch("pho_nBCs", &pho_nBCs);
+  
   tree->Branch("hcalhit_ieta", &hcalhit_ieta);
   tree->Branch("hcalhit_iphi", &hcalhit_iphi);
   tree->Branch("hcalhit_energy", &hcalhit_energy);
@@ -347,6 +361,12 @@ FlatPhoHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   pho_seed_iphi.clear();
   pho_seed_eta.clear();
   pho_seed_phi.clear();
+
+  pho_seedBC_eta.clear();
+  pho_seedBC_phi.clear();
+
+  pho_nBCs.clear();
+  
   pho_seed_raw_id.clear();
   pho_seed_hcal_ieta.clear();
   pho_seed_hcal_iphi.clear();
@@ -526,6 +546,46 @@ FlatPhoHoEAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }  
     pho_seed_eta.emplace_back(var_pho_seed_eta);
     pho_seed_phi.emplace_back(var_pho_seed_phi);
+    
+
+    std::vector<float> tmp_seedbc_eta;
+    std::vector<float> tmp_seedbc_phi;
+    int tmp_nBCs = 0;
+    
+    ////add all the basic clusters seed to an array
+    for (reco::CaloCluster_iterator cIt = superClus.clustersBegin(); cIt != superClus.clustersEnd(); ++cIt) {
+      const reco::CaloClusterPtr cc = *cIt;
+      
+      DetId seedId = cc->seed() ;
+
+      //DetId seed = (seedID.hitsAndFractions())[0].first;
+      bool isBarrel = seedId.subdetId() == EcalBarrel;
+      double var_pho_seed_eta=-999, var_pho_seed_phi=-999;
+      bool foundHit = GetSeedEtaPhi(isBarrel,seedId, lazyTool,var_pho_seed_eta, var_pho_seed_phi);
+      
+      if(foundHit){
+	tmp_seedbc_eta.push_back(var_pho_seed_eta);
+	tmp_seedbc_phi.push_back(var_pho_seed_phi);
+      }
+
+      else{
+	tmp_seedbc_eta.push_back(-999);
+	tmp_seedbc_phi.push_back(-999);
+	
+      }
+      
+      tmp_nBCs++;
+      //pho_seed_detid.emplace_back(seedId.det());
+      //pho_seed_subdetid.emplace_back(seedId.subdetId());
+      
+
+      //std::cout<<"iph : BC eta : BC phi : "<<n_pho<<" "<<var_pho_seed_eta<<" "<<var_pho_seed_phi<<std::endl;
+    }  // loop on BCs
+    
+    pho_nBCs.push_back(tmp_nBCs);
+
+    pho_seedBC_eta.push_back(tmp_seedbc_eta);
+    pho_seedBC_phi.push_back(tmp_seedbc_phi);
 
     int var_pho_seed_ieta = -999999;
     int var_pho_seed_iphi = -999999;
@@ -775,3 +835,27 @@ FlatPhoHoEAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& description
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(FlatPhoHoEAnalyzer);
+
+
+bool FlatPhoHoEAnalyzer::GetSeedEtaPhi(bool isBarrel, DetId seed, EcalClusterLazyTools lazyTool, double &var_pho_seed_eta, double &var_pho_seed_phi){
+  
+  bool found = false;
+  const EcalRecHitCollection * rechits = isBarrel ? lazyTool.getEcalEBRecHitCollection() : lazyTool.getEcalEERecHitCollection();
+  EcalRecHitCollection::const_iterator theSeedHit = rechits->find(seed);
+  if (theSeedHit != rechits->end()) {
+    if ( (theSeedHit->id().rawId() != 0 ) ) {
+      if (theCaloGeometry.product() != nullptr) {
+	const CaloSubdetectorGeometry *ecalgeo = theCaloGeometry->getSubdetectorGeometry(theSeedHit->id());
+	
+	if(ecalgeo->getGeometry(theSeedHit->id()) !=nullptr){
+	  const GlobalPoint & ecalrechitPoint = (theCaloGeometry.product())->getPosition(theSeedHit->id());
+	  var_pho_seed_eta=ecalrechitPoint.eta();
+	  var_pho_seed_phi=ecalrechitPoint.phi();
+	  found = true;
+	}
+      }
+    }
+  }  
+  
+  return found;
+}
